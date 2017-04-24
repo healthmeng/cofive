@@ -74,6 +74,10 @@ func (player* AIPlayer)ListSteps() ([]StepInfo,int){
 	return player.steps,player.curstep
 }
 
+func (player* AIPlayer)Evaluate()(int,int){
+	return 0,0
+}
+
 func (player* AIPlayer)DirectAlgo()StepInfo{
 	var st StepInfo
 	allst:=player.getallstep()
@@ -84,7 +88,6 @@ func (player* AIPlayer)DirectAlgo()StepInfo{
 	for i:=0;i<nstep;i++{
 		player.ApplyStep(allst[i])
 		bscore,wscore:=player.Evaluate()
-		
 	}
 	return st
 }
