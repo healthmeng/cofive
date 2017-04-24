@@ -84,7 +84,6 @@ func (player* AIPlayer)DirectAlgo()StepInfo{
 	for i:=0;i<nstep;i++{
 		player.ApplyStep(allst[i])
 		bscore,wscore:=player.Evaluate()
-		
 	}
 	return st
 }
