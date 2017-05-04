@@ -26,8 +26,17 @@ const(
 	CCCCC
 	CC_CCC
 	CCCC
+	NCCCC
+	CCC
+	NCCC
+	CC
+	NCC
+	C
+	NC
 )
 
+var FScoreTB[11] int={0,50000,20000,}
+var LScoreTB[11] int={0,50000,}
 
 type StepInfo struct{
 	x,y int
