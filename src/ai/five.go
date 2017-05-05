@@ -35,8 +35,33 @@ const(
 	NC
 )
 
-var FScoreTB[11] int={0,50000,20000,}
-var LScoreTB[11] int={0,50000,}
+var BScoreTB [11]int =[...]int{
+	0,	// NONE
+	50000,	// CCCCC
+	900,	//CC_CCC
+	5000,	// CCCC
+	800,	// NCCCC,
+	800,	// CCC
+	150,	// NCCC
+	200,	// CC 
+	20,		// NCC
+	20,		// C
+	10,		// NC
+}
+
+var FScoreTB [11] int=[...]int{
+	0,	// NONE
+	50000,	// CCCCC
+	15000,	//CC_CCC
+	20000,	// CCCC
+	15000,	// NCCCC
+	1500,	// CCC
+	200,	// NCCC
+	200,	// CC 
+	20,		// NCC
+	20,		// C
+	10,		// NC
+}
 
 type StepInfo struct{
 	x,y int
@@ -52,6 +77,7 @@ type AIPlayer struct{
 	robot, human int
 	rnd	*rand.Rand
 }
+
 
 func InitPlayer(color int, level int) (* AIPlayer,error){
 	player:=new (AIPlayer)
@@ -71,18 +97,96 @@ func InitPlayer(color int, level int) (* AIPlayer,error){
 	return player, nil
 }
 
+func (player* AIPlayer) IsOver() int{
+// 1 black, 2 white, 0 not over yet
+	if player.curstep<9{
+		return 0
+	}
+	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
+
+	n:=0
+	for i:=x-1;i>=0 && player.frame[i][y]==bw && n<4 ; i--{
+		n++;
+	}
+	for i:=x+1;i<15 && player.frame[i][y]==bw && n<4; i++{
+		n++;
+	}
+	if n>=4{
+		return bw
+	}
+
+	n=0
+	for i:=y-1 ;i>=0 && player.frame[x][i]==bw && n<4; i--{
+		n++;
+	}
+	for i:=y+1;i<15 && player.frame[x][i]==bw && n<4; i++{
+		n++;
+	}
+	if n>=4{
+		return bw
+	}
+
+	n=0
+	for i,j:=x-1,y-1;i>=0 && j>=0 && player.frame[i][j]==bw && n<4 ; i,j=i-1,j-1{
+		n++;
+	}
+	for i,j:=x+1,y+1;i<15 && j<15 && player.frame[i][j]==bw && n<4;i,j=i+1,j+1{
+		n++;
+	}
+	if n>=4{
+		return bw
+	}
+
+	n=0
+	for i,j:=x+1,y-1;i<15 && j>=0 && player.frame[i][j]==bw && n<4; i,j=i+1,j-1{
+		n++;
+	}
+	for i,j:=x-1,y+1;i>=0 && j<15 && player.frame[i][j]==bw && n<4 ;i,j=i-1,j+1{
+		n++;
+	}
+	if n>=4{
+		return bw
+	}
+
+	return 0
+}
+
 func (player* AIPlayer)SetStep(x int,y int){
-	bval,wval:=0,0
+/*	bval,wval:=0,0
 	if player.curstep>0{
 		bval,wval=player.Evaluate(x,y)
 	}
 	player.frame[x][y]=player.human
 	st:=StepInfo{x,y,player.human}
 	player.steps[player.curstep]=st
-	player.curstep++
 	nbval,nwval:=player.Evaluate(x,y)
-    player.bvalues[player.curstep]= player.bvalues[player.curstep-1]+nbval-bval
-    player.wvalues[player.curstep]= player.bvalues[player.curstep-1]+nwval-wval
+	if player.curstep>0{
+		player.bvalues[player.curstep]= player.bvalues[player.curstep-1]+nbval-bval
+		player.wvalues[player.curstep]= player.bvalues[player.curstep-1]+nwval-wval
+	}else{
+		player.bvalues[player.curstep]=nbval
+		player.wvalues[player.curstep]=nwval
+	}
+	player.curstep++*/
+	player.ApplyStep(StepInfo{x,y,player.human})
+}
+
+func (player* AIPlayer)ApplyStep(st StepInfo){
+	bval,wval:=0,0
+	if player.curstep>0{
+		bval,wval=player.Evaluate(st.x,st.y)
+	}
+	player.frame[st.x][st.y]=st.bw
+	player.steps[player.curstep]=st
+	player.curstep++
+	nbval,nwval:=player.Evaluate(st.x,st.y)
+	if player.curstep>1{
+		player.bvalues[player.curstep-1]= player.bvalues[player.curstep-2]+nbval-bval
+		player.wvalues[player.curstep-1]= player.bvalues[player.curstep-2]+nwval-wval
+	}else{
+        player.bvalues[player.curstep-1]=nbval
+        player.wvalues[player.curstep-1]=nwval
+	}
 }
 
 func (player* AIPlayer)UnsetStep(x,y int){
@@ -99,9 +203,14 @@ func (player* AIPlayer)GetStep()(int,int){
 	}else{
 		st=player.MinMaxAlgo()
 	}
+	player.frame[st.x][st.y]=player.robot
 	player.steps[player.curstep]=*st
 	player.curstep++
 	return st.x,st.y
+}
+
+func (player* AIPlayer)GetFrame() [15][15] int{
+	return player.frame
 }
 
 func (player* AIPlayer)ListSteps() ([]StepInfo,int){
@@ -118,35 +227,65 @@ type Conti struct{
 }
 
 func (part *Conti)ParseType()int{
-	return part.conttype
+	cont:=part.length%6
+	ret:=NONE
+	midsp:=1
+	if part.spmid==0{
+		midsp=0
+	}
+
+	switch cont{
+		case 1:
+			if part.leftsp+part.rightsp>4{
+				if part.leftsp>0 && part.rightsp>0 {
+					ret=C
+				}else{
+					ret=NC
+				}
+			}
+		case 2:
+			if part.leftsp+part.rightsp+midsp>3{
+				if part.leftsp>0 && part.rightsp>0{
+					ret=CC
+				}else{
+					ret=NCC
+				}
+			}
+		case 3:
+			if part.leftsp+part.rightsp+midsp>2{
+				if part.leftsp>0 && part.rightsp>0{
+					ret=CCC
+				}else{
+					ret=NCCC
+				}
+			}
+		case 4:
+			if part.leftsp+part.rightsp+midsp>1{
+				if part.leftsp>0 && part.rightsp>0 && midsp==0{
+					ret=CCCC
+				}else{
+					ret=NCCCC
+				}
+			}
+		case 5:
+			if midsp==0{
+				ret=CCCCC
+			}else{
+				ret=CC_CCC
+			}
+	}
+	part.conttype=ret
+	return ret
 }
 
 func (part *Conti)CountScore(nextmove int) int{
 // nextmove: 1-> black; 2->white; 0->ignore
 	score:=0
-	maxcont:=part.length-part.spmid
-	if maxcont<part.spmid{
-		maxcont=part.spmid
-	}
-	switch {
-	case part.length>=5:
-		if maxcont>=5{
-			score=50000
-		}else{
-			if nextmove==part.bw{
-				score=20000
-			}else{
-				score=5000
-			}
-		}
-	case part.length==4:
-	/*	if maxcount==4){
-			if nextmove==part.bw{
-				score=20000
-			}else{
-				score=5000
-			}
-		}*/
+	contype:=part.ParseType()
+	if nextmove==part.bw{
+		score=FScoreTB[contype]
+	}else{
+		score=BScoreTB[contype]
 	}
 	return score
 }
@@ -318,11 +457,11 @@ func (player* AIPlayer)Evaluate(x,y int)(int,int){
 
 func (player* AIPlayer)chessaround(x,y int) bool{
 	for i:=x-2;i<=x+2;i++{
-		if x<0 || x>15{
+		if i<0 || i>=15{
 			continue
 		}
 		for j:=y-2;j<y+2;j++{
-			if y<0 || y>15{
+			if j<0 || j>=15{
 				continue
 			}
 			if player.frame[i][j]!=0{
@@ -335,27 +474,21 @@ func (player* AIPlayer)chessaround(x,y int) bool{
 
 func (player* AIPlayer)getallstep(side int)[]StepInfo{
 	sts:=make ([]StepInfo,0,MAX_STEP)
-	for i:=0;i<15;i++{
-		for j:=0;j<15;j++{
-			if player.frame[i][j]==0 && player.chessaround(i,j) {
-				sts=append(sts,StepInfo{i,j,side})
+	if player.curstep==0{
+		if side!=BLACK{
+			log.Println("Error, first step should be black turn")
+		}
+		sts=append(sts,StepInfo{7,7,side})
+	}else{
+		for i:=0;i<15;i++{
+			for j:=0;j<15;j++{
+				if player.frame[i][j]==0 && player.chessaround(i,j) {
+					sts=append(sts,StepInfo{i,j,side})
+				}
 			}
 		}
 	}
-	return nil
-}
-
-func (player* AIPlayer)ApplyStep(st StepInfo){
-	bval,wval:=0,0
-	if player.curstep>0{
-		bval,wval=player.Evaluate(st.x,st.y)
-	}
-	player.frame[st.x][st.y]=st.bw
-	player.steps[player.curstep]=st
-	player.curstep++
-	nbval,nwval:=player.Evaluate(st.x,st.y)
-	player.bvalues[player.curstep]= player.bvalues[player.curstep-1]+nbval-bval
-	player.wvalues[player.curstep]= player.bvalues[player.curstep-1]+nwval-wval
+	return sts
 }
 
 func (player* AIPlayer)UnapplyStep(st StepInfo){
@@ -374,9 +507,10 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	maxscore:=SCORE_INIT
 	for i:=0;i<nstep;i++{
 		player.ApplyStep(allst[i])
-		bscore,wscore:=player.Evaluate(allst[i].x,allst[i].y)
+		bscore,wscore:=player.bvalues[player.curstep-1],player.wvalues[player.curstep-1]
 		scores:=[2]int{bscore,wscore}
-		val:=scores[player.robot]-scores[player.human]
+		val:=scores[player.robot-1]-scores[player.human-1]
+		log.Printf("%d,%d  value: %d-%d\n",allst[i].x,allst[i].y,bscore,wscore)
 		if val>maxscore{
 			results=make([]StepInfo,1,nstep)
 			results[0]=allst[i]
@@ -387,6 +521,10 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 		player.UnapplyStep(allst[i])
 	}
 	nchoose:=len(results)
+	log.Println("List:")
+	for i:=0;i<nchoose;i++{
+		log.Printf("%d,%d-%d\n",results[i].x,results[i].y,maxscore)
+	}
 	if nchoose>0{
 		return &results[player.rnd.Int()%nchoose]
 	}
