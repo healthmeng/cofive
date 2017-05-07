@@ -42,7 +42,7 @@ func main(){
 	over:=0
 	for ;over==0;over=player.IsOver(){
 		var x,y int
-		fmt.Scanf("%d%d",&x,&y)
+		fmt.Scanln(&x,&y)
 		player.SetStep(x,y)
 		draw(player)
 		if over=player.IsOver();over!=0{

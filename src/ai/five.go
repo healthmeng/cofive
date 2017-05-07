@@ -18,7 +18,7 @@ const(
 	MAX_STEP=15*15
 	BLACK=1
 	WHITE=2
-	SCORE_INIT=-20000
+	SCORE_INIT= -2000000
 )
 
 const(
@@ -56,7 +56,7 @@ var FScoreTB [11] int=[...]int{
 	20000,	// CCCC
 	15000,	// NCCCC
 	1500,	// CCC
-	200,	// NCCC
+	150,	// NCCC
 	200,	// CC 
 	20,		// NCC
 	20,		// C
@@ -181,7 +181,6 @@ func (player* AIPlayer)ApplyStep(st StepInfo){
 	player.curstep++
 	nbval,nwval:=player.Evaluate(st.x,st.y)
 	if player.curstep>1{
-//	log.Printf("bval[step-1]: %d, bval[step-2]:%d !!!!!!!!!!!!!!!!!!!!!!\n",player.bvalues[player.curstep-1],player.wvalues[player.curstep-2])
 		player.bvalues[player.curstep-1]= player.bvalues[player.curstep-2]+nbval-bval
 		player.wvalues[player.curstep-1]= player.wvalues[player.curstep-2]+nwval-wval
 	}else{
@@ -205,9 +204,11 @@ func (player* AIPlayer)GetStep()(int,int){
 	}else{
 		st=player.MinMaxAlgo()
 	}
-	player.frame[st.x][st.y]=player.robot
+/*	player.frame[st.x][st.y]=player.robot
 	player.steps[player.curstep]=*st
-	player.curstep++
+	player.curstep++*/
+	player.ApplyStep(*st)
+	log.Printf("x,y: %d-%d, val: %d...%d\n",st.x,st.y,player.bvalues[player.curstep-1],player.wvalues[player.curstep-1])
 	return st.x,st.y
 }
 
@@ -238,31 +239,31 @@ func (part *Conti)ParseType()int{
 
 	switch cont{
 		case 1:
-			if part.leftsp+part.rightsp>4{
-				if part.leftsp>0 && part.rightsp>0 {
+			if part.leftsp+part.rightsp>=4{
+				if part.leftsp>0 && part.rightsp>0 && part.leftsp+part.rightsp>4 {
 					ret=C
 				}else{
 					ret=NC
 				}
 			}
 		case 2:
-			if part.leftsp+part.rightsp+midsp>3{
-				if part.leftsp>0 && part.rightsp>0{
+			if part.leftsp+part.rightsp+midsp>=3{
+				if part.leftsp>0 && part.rightsp>0 && part.leftsp+part.rightsp+midsp>3{
 					ret=CC
 				}else{
 					ret=NCC
 				}
 			}
 		case 3:
-			if part.leftsp+part.rightsp+midsp>2{
-				if part.leftsp>0 && part.rightsp>0{
+			if part.leftsp+part.rightsp+midsp>=2{
+				if part.leftsp>0 && part.rightsp>0 && part.leftsp+part.rightsp+midsp>2{
 					ret=CCC
 				}else{
 					ret=NCCC
 				}
 			}
 		case 4:
-			if part.leftsp+part.rightsp+midsp>1{
+			if part.leftsp+part.rightsp+midsp>=1{
 				if part.leftsp>0 && part.rightsp>0 && midsp==0{
 					ret=CCCC
 				}else{
@@ -400,7 +401,7 @@ func (player* AIPlayer)EvalLine(line[]int)(int,int){
 						end=&Conti{1,0,0,1,line[i],0}
 					}else if rfr==-1{
 						parts=append(parts,*front)
-						front=&Conti{front.rightsp,0,0,1,line[1],0}
+						front=&Conti{front.rightsp,0,0,1,line[i],0}
 					}
 				}
 			}else{ // front==nil
@@ -521,7 +522,6 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 		bscore,wscore:=player.bvalues[player.curstep-1],player.wvalues[player.curstep-1]
 		scores:=[2]int{bscore,wscore}
 		val:=scores[player.robot-1]-scores[player.human-1]
-		log.Printf("%d,%d  value: %d-%d\n",allst[i].x,allst[i].y,bscore,wscore)
 		if val>maxscore{
 			results=make([]StepInfo,1,nstep)
 			results[0]=allst[i]
@@ -532,10 +532,6 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 		player.UnapplyStep(allst[i])
 	}
 	nchoose:=len(results)
-	log.Println("List:")
-	for i:=0;i<nchoose;i++{
-		log.Printf("%d,%d-%d\n",results[i].x,results[i].y,maxscore)
-	}
 	if nchoose>0{
 		return &results[player.rnd.Int()%nchoose]
 	}
