@@ -22,6 +22,8 @@ func draw(player *ai.AIPlayer){
 				fmt.Printf(" o")
 			case 2:
 				fmt.Printf(" x")
+			default:
+				fmt.Printf(" ?")
 			}
 		}
 		fmt.Println("")

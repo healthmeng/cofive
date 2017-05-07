@@ -181,12 +181,14 @@ func (player* AIPlayer)ApplyStep(st StepInfo){
 	player.curstep++
 	nbval,nwval:=player.Evaluate(st.x,st.y)
 	if player.curstep>1{
+//	log.Printf("bval[step-1]: %d, bval[step-2]:%d !!!!!!!!!!!!!!!!!!!!!!\n",player.bvalues[player.curstep-1],player.wvalues[player.curstep-2])
 		player.bvalues[player.curstep-1]= player.bvalues[player.curstep-2]+nbval-bval
-		player.wvalues[player.curstep-1]= player.bvalues[player.curstep-2]+nwval-wval
+		player.wvalues[player.curstep-1]= player.wvalues[player.curstep-2]+nwval-wval
 	}else{
         player.bvalues[player.curstep-1]=nbval
         player.wvalues[player.curstep-1]=nwval
 	}
+
 }
 
 func (player* AIPlayer)UnsetStep(x,y int){
@@ -323,12 +325,12 @@ func (part *Conti)AddTail(cont int) int {
 
 func (player* AIPlayer) CountScore(parts []Conti)(int,int){
 	bs,ws:=0,0
-	nextmove:=player.curstep%2+1
+//	nextmove:=player.curstep%2+1
 	for  _,part:=range parts{
 		if part.bw==BLACK{
-			bs+=part.CountScore(nextmove)
+			bs+=part.CountScore(player.human)
 		}else{
-			ws+=part.CountScore(nextmove)
+			ws+=part.CountScore(player.human)
 		}
 	}
 	return bs,ws
@@ -416,23 +418,32 @@ func (player* AIPlayer)Evaluate(x,y int)(int,int){
 	topleft:=make([]int,0,15)
 	topright:=make([]int,0,15)
 
-	for i,j:=x,y;i<15 && j<15; i,j=i+1,j+1{
+	for i:=0;i<15; i++{
 		hor=append(hor,player.frame[i][y])
 		ver=append(ver,player.frame[x][i])
+//		log.Printf("hor: %d,%d-%d; ver: %d,%d-%d\n",i,y,player.frame[i][y], x,y,player.frame[x][i])
 	}
 
 	for i,j:=x,y;i>=0 && j>=0 ;i,j=i-1,j-1{
 		topleft=append(topleft,player.frame[i][j])
+	}
+	tmplen:=len(topleft)
+	for i:=0;i<tmplen/2;i++{
+		topleft[i],topleft[tmplen-1-i]=topleft[tmplen-1-i],topleft[i]
 	}
 	for i,j:=x+1,y+1;i<15 && j<15;i,j=i+1,j+1{
 		topleft=append(topleft,player.frame[i][j])
 	}
 
 	for i,j:=x,y;i<15 && j>=0;i,j=i+1,j-1{
-		topright=append(topleft,player.frame[i][j])
+		topright=append(topright,player.frame[i][j])
 	}
+    tmplen=len(topright)
+    for i:=0;i<tmplen/2;i++{
+        topright[i],topright[tmplen-1-i]=topright[tmplen-1-i],topright[i]
+    }
 	for i,j:=x-1,y+1;i>=0 && j<15;i,j=i-1,j+1{
-		topright=append(topleft,player.frame[i][j])
+		topright=append(topright,player.frame[i][j])
 	}
 
 	bvalue,wvalue:=0,0
