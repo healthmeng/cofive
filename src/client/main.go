@@ -30,16 +30,77 @@ func draw(player *ai.AIPlayer){
 	}
 }
 
-func main(){
+func simulate(show bool) int {
+	player1,_:=ai.InitPlayer(1,0)
+	player2,_:=ai.InitPlayer(2,0)
+	over:=0
+	for{
+		x,y:=player1.GetStep()
+		if show{
+			draw(player1)
+		}
+		over=player1.IsOver()
+		if over==1{
+			fmt.Println("Black win")
+			return 1
+		}else if over== -1{
+			fmt.Println("Drawn...")
+			return -1
+		}
+		player2.SetStep(x,y)
+		x,y=player2.GetStep()
+		if show{
+			draw(player2)
+		}
+		over=player2.IsOver()
+		if over!=0{
+			fmt.Println("White win")
+			return 2
+		}else if over== -1{
+			fmt.Println("Drawn...")
+			return -1
+		}
 
+		player1.SetStep(x,y)
+	}
+}
+
+func main(){
+	fmt.Println("Robot use Black(1) or White(2)?")
+	color:=0
+	for color==0{
+		fmt.Scanln(&color)
+	}
+	if color>2{
+		bw,ww,dw:=0,0,0
+		show:=false;
+		if color%2==0{
+			show=true
+		}
+		for i:=0;i<color;i++{
+			switch simulate(show){
+			case 1:
+				bw++
+			case 2:
+				ww++
+			case -1:
+				dw++
+			}
+		}
+		fmt.Printf("Total %d times, black win %d, white win %d, drawn %d\n",color,bw,ww, dw)
+		return
+	}
     fmt.Println("Start:")
-    player,err:=ai.InitPlayer(ai.WHITE,0)
+    player,err:=ai.InitPlayer(color,0)
 	if err!=nil{
         fmt.Println("Init server error:",err)
 		return
     }
-	draw(player)
 	over:=0
+	if color==ai.BLACK{
+		player.GetStep()
+	}
+	draw(player)
 	for ;over==0;over=player.IsOver(){
 		var x,y int
 		fmt.Scanln(&x,&y)
@@ -53,8 +114,10 @@ func main(){
 	}
 	if over==1{
 		fmt.Println("Black win")
-	}else{
+	}else if over==2{
 		fmt.Println("White win")
+	}else{
+		fmt.Println("Drawn")
 	}
 }
 

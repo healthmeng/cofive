@@ -148,26 +148,15 @@ func (player* AIPlayer) IsOver() int{
 		return bw
 	}
 
+	if player.curstep>=MAX_STEP{
+		log.Println("Drawned")
+		return -1
+	}
+
 	return 0
 }
 
 func (player* AIPlayer)SetStep(x int,y int){
-/*	bval,wval:=0,0
-	if player.curstep>0{
-		bval,wval=player.Evaluate(x,y)
-	}
-	player.frame[x][y]=player.human
-	st:=StepInfo{x,y,player.human}
-	player.steps[player.curstep]=st
-	nbval,nwval:=player.Evaluate(x,y)
-	if player.curstep>0{
-		player.bvalues[player.curstep]= player.bvalues[player.curstep-1]+nbval-bval
-		player.wvalues[player.curstep]= player.bvalues[player.curstep-1]+nwval-wval
-	}else{
-		player.bvalues[player.curstep]=nbval
-		player.wvalues[player.curstep]=nwval
-	}
-	player.curstep++*/
 	player.ApplyStep(StepInfo{x,y,player.human})
 }
 
@@ -204,11 +193,12 @@ func (player* AIPlayer)GetStep()(int,int){
 	}else{
 		st=player.MinMaxAlgo()
 	}
-/*	player.frame[st.x][st.y]=player.robot
-	player.steps[player.curstep]=*st
-	player.curstep++*/
+	if st==nil{
+		log.Println("Drawn!")
+		return -1,-1
+	}
 	player.ApplyStep(*st)
-	log.Printf("x,y: %d-%d, val: %d...%d\n",st.x,st.y,player.bvalues[player.curstep-1],player.wvalues[player.curstep-1])
+//	log.Printf("x,y: %d-%d, val: %d...%d\n",st.x,st.y,player.bvalues[player.curstep-1],player.wvalues[player.curstep-1])
 	return st.x,st.y
 }
 
