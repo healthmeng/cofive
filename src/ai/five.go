@@ -19,6 +19,7 @@ const(
 	BLACK=1
 	WHITE=2
 	SCORE_INIT= -2000000
+	FORBIDDEN = -500000
 )
 
 const(
@@ -71,6 +72,7 @@ type StepInfo struct{
 type AIPlayer struct{
 	frame [15][15] int
 	level int
+	forbid bool
 	steps []StepInfo
 	bvalues, wvalues []int
 	curstep int
@@ -78,10 +80,18 @@ type AIPlayer struct{
 	rnd	*rand.Rand
 }
 
+func (player* AIPlayer)DebugStep(){
+	n:=player.curstep-1
+	if n<0{
+		return
+	}
+	log.Printf("step %d,%d  value %d-%d\n",player.steps[n].x,player.steps[n].y,player.bvalues[n],player.wvalues[n])
+}
 
-func InitPlayer(color int, level int) (* AIPlayer,error){
+func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 	player:=new (AIPlayer)
 	player.level=level
+	player.forbid=forbid
 	player.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
 	player.bvalues=make([]int,MAX_STEP,MAX_STEP)
 	player.wvalues=make([]int,MAX_STEP,MAX_STEP)
@@ -99,11 +109,13 @@ func InitPlayer(color int, level int) (* AIPlayer,error){
 
 func (player* AIPlayer) IsOver() int{
 // 1 black, 2 white, 0 not over yet
-	if player.curstep<9{
+	if player.curstep<5{
 		return 0
 	}
 	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
-
+	if bw==BLACK && player.CheckForbid(x,y)!=0{
+		return WHITE
+	}
 	n:=0
 	for i:=x-1;i>=0 && player.frame[i][y]==bw && n<4 ; i--{
 		n++;
@@ -157,7 +169,7 @@ func (player* AIPlayer) IsOver() int{
 }
 
 func (player* AIPlayer)SetStep(x int,y int){
-	player.ApplyStep(StepInfo{x,y,player.human})
+	player.ApplyStep(StepInfo{x,y,player.curstep%2+1})
 }
 
 func (player* AIPlayer)ApplyStep(st StepInfo){
@@ -217,9 +229,13 @@ type Conti struct{
 	length	int
 	bw int // color
 	conttype int
+	isnew bool // created by latest chess
 }
 
 func (part *Conti)ParseType()int{
+	if part.conttype!=-1 {// already parsed before
+		return part.conttype
+	}
 	cont:=part.length%6
 	ret:=NONE
 	midsp:=1
@@ -285,7 +301,7 @@ func (part *Conti)CountScore(nextmove int) int{
 
 func (part *Conti)AddTail(cont int) int {
 // return 0: if the part continue to be counted
-// return 1: if part continue and a space in mid, need create end later
+// return 1: if part continue and a space in mid, need create "end" later
 // return -1: if finished part, and a new part started
 	var ret int
 	switch {
@@ -327,25 +343,30 @@ func (player* AIPlayer) CountScore(parts []Conti)(int,int){
 	return bs,ws
 }
 
-func (player* AIPlayer)EvalLine(line[]int)(int,int){
-	//bval,wval:=0,0
+func (player* AIPlayer)CountLineParts(line[]int,newone int)[]Conti{
 	nLen:=len(line)
 	if nLen<5{
-		return 0,0
+		return nil
 	}
 	parts:=make([]Conti,0,nLen)
 	var front *Conti=nil
 	var end *Conti=nil
 	contsp:=0
-// ...
+
 	for i:=0;i<nLen;i++{
 		switch {
 		case i==nLen-1: // last, force check
 			if front!=nil{
 				front.AddTail(line[i])
+				if newone==i{
+					front.isnew=true
+				}
 				parts=append(parts,*front)
 				if end!=nil{
 					end.AddTail(line[i])
+					if newone==i{
+						end.isnew=true
+					}
 					parts=append(parts,*end)
 				}
 			}
@@ -363,62 +384,147 @@ func (player* AIPlayer)EvalLine(line[]int)(int,int){
 				if end!=nil{
 					if rfr==1{
 						log.Println("Error: rfr==1 && end!=nil")
-						return 0,0
+						return nil
 					}
 				// rfr!=1
 					rend:=end.AddTail(line[i])
 					if rend==1{
 						if rfr!= -1{
-							log.Println("Error: rend==1 && rfr!=-1")
-							return 0,0
+							log.Println("Error: rend==1(end create another end) && rfr!= -1")
+							return nil
 						}
 						// **-**-*
 						parts=append(parts,*front)
 						front=end
-						end=&Conti{1,0,0,1,line[i],0}
+						end=&Conti{1,0,0,1,line[i],-1,false}
+				/*		if i==newone{
+							front.isnew=true
+							end.isnew=true
+						}*/
 					}else if rend== -1{
 						if rfr!= -1{
 							log.Println("Error: rend==-1 && rfr!= -1")
-							return 0,0
+							return nil
 						}
 						parts=append(parts,*front)
 						parts=append(parts,*end)
-						front=&Conti{end.rightsp,0,0,1,line[i],0}
+						front=&Conti{end.rightsp,0,0,1,line[i],-1,false}
 						end=nil
+					/*	if i==newone{
+							front.isnew=true
+						}*/
 					}
 				}else{	// end==nil && front!=nil
 					if rfr==1{
-						end=&Conti{1,0,0,1,line[i],0}
-					}else if rfr==-1{
+						end=&Conti{1,0,0,1,line[i],-1,false}
+               /*      if i==newone{
+                            front.isnew=true
+                            end.isnew=true
+                        }*/
+					}else if rfr== -1{
 						parts=append(parts,*front)
-						front=&Conti{front.rightsp,0,0,1,line[i],0}
+						front=&Conti{front.rightsp,0,0,1,line[i],-1,false}
+				/*		if i==newone{
+                            front.isnew=true
+                        }*/
 					}
 				}
 			}else{ // front==nil
-				front=&Conti{contsp,0,0,1,line[i],0}
+				front=&Conti{contsp,0,0,1,line[i],-1,false}
+		/*		if newone==i{
+					front.isnew=true
+				}*/
+			}
+			if newone == i{
+				if front!=nil{
+					front.isnew=true
+				}
+				if end!=nil{
+					end.isnew=true
+				}
 			}
 			contsp=0
 		}
 	}
-	return player.CountScore(parts)
+	return parts
 }
 
-func (player* AIPlayer)Evaluate(x,y int)(int,int){
+/*
+func (player* AIPlayer)EvalLine(line[]int, place int)(int,int){
+	//bval,wval:=0,0
+	parts:=player.CountParts(line,place)
+	if parts==nil{
+		return 0,0
+	}
+	return player.CountScore(parts)
+}*/
+
+func (player* AIPlayer)hasforbid(parts []Conti) int{
+	if player.forbid==false || len(parts)==0{
+			return 0
+	}
+	nCCC:=0
+	nCCCC:=0
+	for _,p:=range parts{
+
+		if p.isnew{
+			tp:=p.ParseType()
+			switch tp{
+			case CCC:
+				nCCC++
+				if nCCC>=2{
+					return CCC
+				}
+			case CCCC:
+				fallthrough
+			case NCCCC:
+				nCCCC++
+				if nCCCC>=2{
+					return CCCC
+				}
+			case CCCCC:
+				if p.length>5{
+					return CCCCC
+				}
+			}
+		}
+	}
+	return 0
+}
+
+func (player* AIPlayer)CheckForbid(x,y int) int{
+	if player.frame[x][y] == BLACK {
+		lines,places:=player.CrossLines(x,y)
+		parts:=make([]Conti,0,MAX_STEP)
+		for i:=0;i<4;i++{
+			parts=append(parts,player.CountLineParts(lines[i],places[i])...)
+		}
+		return player.hasforbid(parts)
+	}
+
+	return 0
+}
+
+func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	hor:=make([]int,0,15)
 	ver:=make([]int,0,15)
 	topleft:=make([]int,0,15)
 	topright:=make([]int,0,15)
 
+	places:=make([]int,4,4)
+
 	for i:=0;i<15; i++{
 		hor=append(hor,player.frame[i][y])
 		ver=append(ver,player.frame[x][i])
-//		log.Printf("hor: %d,%d-%d; ver: %d,%d-%d\n",i,y,player.frame[i][y], x,y,player.frame[x][i])
 	}
+	places[0]=x
+	places[1]=y
 
 	for i,j:=x,y;i>=0 && j>=0 ;i,j=i-1,j-1{
 		topleft=append(topleft,player.frame[i][j])
 	}
 	tmplen:=len(topleft)
+	places[2]=tmplen-1
 	for i:=0;i<tmplen/2;i++{
 		topleft[i],topleft[tmplen-1-i]=topleft[tmplen-1-i],topleft[i]
 	}
@@ -430,6 +536,7 @@ func (player* AIPlayer)Evaluate(x,y int)(int,int){
 		topright=append(topright,player.frame[i][j])
 	}
     tmplen=len(topright)
+	places[3]=tmplen-1
     for i:=0;i<tmplen/2;i++{
         topright[i],topright[tmplen-1-i]=topright[tmplen-1-i],topright[i]
     }
@@ -437,24 +544,27 @@ func (player* AIPlayer)Evaluate(x,y int)(int,int){
 		topright=append(topright,player.frame[i][j])
 	}
 
-	bvalue,wvalue:=0,0
-	btmp,wtmp:=player.EvalLine(hor)
-	bvalue+=btmp
-	wvalue+=wtmp
+	lines:=make([][]int,0,4)
+	lines=append(lines,hor,ver,topleft,topright)
+	return lines,places
+}
 
-	btmp,wtmp=player.EvalLine(ver)
-	bvalue+=btmp
-	wvalue+=wtmp
+func (player* AIPlayer)Evaluate(x,y int)(int,int){
+	lines,places:=player.CrossLines(x,y)
 
-	btmp,wtmp=player.EvalLine(topleft)
-	bvalue+=btmp
-	wvalue+=wtmp
+	parts:=make([]Conti,0,MAX_STEP)
+	for i:=0;i<4;i++{
+		parts=append(parts,player.CountLineParts(lines[i],places[i])...)
+	}
+	if len(parts)==0{
+		return 0,0
+	}
 
-	btmp,wtmp=player.EvalLine(topright)
-	bvalue+=btmp
-	wvalue+=wtmp
+	if player.CheckForbid(x,y)!=0{// check black in CheckForbid already
+		return 0,FORBIDDEN
+	}
 
-	return bvalue,wvalue
+	return player.CountScore(parts)
 }
 
 func (player* AIPlayer)chessaround(x,y int) bool{
