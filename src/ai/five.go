@@ -638,8 +638,95 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	return nil
 }
 
-func (player* AIPlayer)MinMaxAlgo() *StepInfo{
-	var st StepInfo
-	return &st
+func (player* AIPlayer)GetMax(x,y int,level int) int{
+	if level==0{
+		b,w:=player.Evaluate(x,y)
+		if player.robot==BLACK{
+			return b-w
+		}else{
+			return w-b
+		}
+	}
+	allst:=player.getallstep(player.robot) // always player.robot
+	nstep:=len(allst)
+	min:= -SCORE_INIT
+	if nstep<1{
+        b,w:=player.Evaluate(x,y)
+        if player.robot==BLACK{
+            return b-w
+        }else{
+            return w-b
+        }
+	}else{
+		for i:=0;i<nstep;i++{
+			player.ApplyStep(allst[i])
+			value:=player.GetMin(allst[i].x,allst[i].y,level-1)
+			if value<min{
+				min=value
+			}
+		}
+		return min
+	}
+}
+
+func (player* AIPlayer)GetMin(x,y int,level int) int{
+	if level==0{
+		b,w:=player.Evaluate(x,y)
+		if player.robot==BLACK{
+			return b-w
+		}else{
+			return w-b
+		}
+	}
+	allst:=player.getallstep(player.robot) // always player.robot
+	nstep:=len(allst)
+	max:= SCORE_INIT
+//	minsts:=make([]StepInfo,0,MAX_STEP)
+	if nstep<1{
+        b,w:=player.Evaluate(x,y)
+        if player.robot==BLACK{
+            return b-w
+        }else{
+            return w-b
+        }
+
+	}else{
+		for i:=0;i<nstep;i++{
+			player.ApplyStep(allst[i])
+			value:=player.GetMax(allst[i].x,allst[i].y,level-1)
+			if value>max{
+				max=value
+			}
+		}
+		return max
+	}
+
+}
+
+func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
+	allst:=player.getallstep(player.robot) // always player.robot
+	nstep:=len(allst)
+	max:=SCORE_INIT
+	maxsts:=make([]StepInfo,0,MAX_STEP)
+	if nstep<1{
+		return nil
+	}else{
+		for i:=0;i<nstep;i++{
+			player.ApplyStep(allst[i])
+			value:=player.GetMin(allst[i].x,allst[i].y,player.level)
+			if value>max{
+				maxsts=make([]StepInfo,0,MAX_STEP)
+				maxsts=append(maxsts,allst[i])
+				max=value
+			}else if value==max{
+				maxsts=append(maxsts,allst[i])
+			}
+		}
+	}
+	nsts:=len(maxsts)
+	if nsts>0{
+		return &maxsts[player.rnd.Int()%nsts]
+	}
+	return nil
 }
 
