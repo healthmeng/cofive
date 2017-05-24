@@ -235,7 +235,7 @@ func (player* AIPlayer)GetStep()(int,int){
 		st=player.MinMaxAlgo()
 	}
 	if st==nil{
-		log.Println("Drawn!")
+	//	log.Println("Drawn!")
 		return -1,-1
 	}
 	player.ApplyStep(*st)
@@ -255,15 +255,15 @@ func (part *Conti)ParseType()int{
 	if part.conttype!=-1 {// already parsed before
 		return part.conttype
 	}
-	cont:=part.length%6
+	cont:=part.length
 	ret:=NONE
 	midsp:=1
 	if part.spmid==0{
 		midsp=0
 	}
 
-	switch cont{
-		case 1:
+	switch {
+		case cont==1:
 			if part.leftsp+part.rightsp>=4{
 				if part.leftsp>0 && part.rightsp>0 && part.leftsp+part.rightsp>4 {
 					ret=C
@@ -271,7 +271,7 @@ func (part *Conti)ParseType()int{
 					ret=NC
 				}
 			}
-		case 2:
+		case cont==2:
 			if part.leftsp+part.rightsp+midsp>=3{
 				if part.leftsp>0 && part.rightsp>0 && part.leftsp+part.rightsp+midsp>3{
 					ret=CC
@@ -279,7 +279,7 @@ func (part *Conti)ParseType()int{
 					ret=NCC
 				}
 			}
-		case 3:
+		case cont==3:
 			if part.leftsp+part.rightsp+midsp>=2{
 				if part.leftsp>0 && part.rightsp>0 && part.leftsp+part.rightsp+midsp>2{
 					ret=CCC
@@ -287,7 +287,7 @@ func (part *Conti)ParseType()int{
 					ret=NCCC
 				}
 			}
-		case 4:
+		case cont==4:
 			if part.leftsp+part.rightsp+midsp>=1{
 				if part.leftsp>0 && part.rightsp>0 && midsp==0{
 					ret=CCCC
@@ -295,7 +295,7 @@ func (part *Conti)ParseType()int{
 					ret=NCCCC
 				}
 			}
-		case 5:
+		case cont>=5:
 			if midsp==0{
 				ret=CCCCC
 			}else{
@@ -447,10 +447,6 @@ func (player* AIPlayer)CountLineParts(line[]int,newone int)[]Conti{
 						parts=append(parts,*front)
 						front=end
 						end=&Conti{1,0,0,1,line[i],-1,false}
-				/*		if i==newone{
-							front.isnew=true
-							end.isnew=true
-						}*/
 					}else if rend== -1{
 						if rfr!= -1{
 							log.Println("Error: rend==-1 && rfr!= -1")
@@ -460,30 +456,17 @@ func (player* AIPlayer)CountLineParts(line[]int,newone int)[]Conti{
 						parts=append(parts,*end)
 						front=&Conti{end.rightsp,0,0,1,line[i],-1,false}
 						end=nil
-					/*	if i==newone{
-							front.isnew=true
-						}*/
 					}
 				}else{	// end==nil && front!=nil
 					if rfr==1{
 						end=&Conti{1,0,0,1,line[i],-1,false}
-               /*      if i==newone{
-                            front.isnew=true
-                            end.isnew=true
-                        }*/
 					}else if rfr== -1{
 						parts=append(parts,*front)
 						front=&Conti{front.rightsp,0,0,1,line[i],-1,false}
-				/*		if i==newone{
-                            front.isnew=true
-                        }*/
 					}
 				}
 			}else{ // front==nil
 				front=&Conti{contsp,0,0,1,line[i],-1,false}
-		/*		if newone==i{
-					front.isnew=true
-				}*/
 			}
 			if newone == i{
 				if front!=nil{
@@ -516,7 +499,6 @@ func (player* AIPlayer)hasforbid(parts []Conti) int{
 	nCCC:=0
 	nCCCC:=0
 	for _,p:=range parts{
-
 		if p.isnew{
 			tp:=p.ParseType()
 			switch tp{

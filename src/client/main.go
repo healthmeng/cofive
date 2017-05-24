@@ -19,9 +19,9 @@ func draw(player *ai.AIPlayer) {
 			case 0:
 				fmt.Printf(" .")
 			case 1:
-				fmt.Printf(" o")
-			case 2:
 				fmt.Printf(" x")
+			case 2:
+				fmt.Printf(" o")
 			default:
 				fmt.Printf(" ?")
 			}
@@ -41,10 +41,14 @@ func simulate(show bool) int {
 		}
 		over = player1.IsOver()
 		if over == 1 {
-			fmt.Println("Black win")
+			if show{
+				fmt.Println("Black win")
+			}
 			return 1
 		} else if over == -1 {
+			if show{
 			fmt.Println("Drawn...")
+			}
 			return -1
 		}
 		player2.SetStep(x, y)
@@ -54,10 +58,14 @@ func simulate(show bool) int {
 		}
 		over = player2.IsOver()
 		if over != 0 {
+			if show{
 			fmt.Println("White win")
+			}
 			return 2
 		} else if over == -1 {
+			if show{
 			fmt.Println("Drawn...")
+			}
 			return -1
 		}
 
