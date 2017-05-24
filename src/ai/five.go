@@ -20,6 +20,7 @@ const(
 	WHITE=2
 	SCORE_INIT= -2000000
 	FORBIDDEN = -500000
+	WIN=1000000
 )
 
 const(
@@ -69,12 +70,23 @@ type StepInfo struct{
 	bw int
 }
 
+type Conti struct{
+	leftsp int
+	rightsp int
+	spmid int
+	length	int
+	bw int // color
+	conttype int
+	isnew bool // created by latest chess
+}
+
 type AIPlayer struct{
 	frame [15][15] int
 	level int
 	forbid bool
 	steps []StepInfo
-	bvalues, wvalues []int
+//	bvalues, wvalues []int
+	bshapes, wshapes map[int]int
 	curstep int
 	robot, human int
 	rnd	*rand.Rand
@@ -85,7 +97,8 @@ func (player* AIPlayer)DebugStep(){
 	if n<0{
 		return
 	}
-	log.Printf("step %d,%d  value %d-%d\n",player.steps[n].x,player.steps[n].y,player.bvalues[n],player.wvalues[n])
+	b,w:=player.GetCurValues()
+	log.Printf("step %d,%d  value %d-%d\n",player.steps[n].x,player.steps[n].y,b,w)
 }
 
 func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
@@ -93,8 +106,8 @@ func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 	player.level=level
 	player.forbid=forbid
 	player.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
-	player.bvalues=make([]int,MAX_STEP,MAX_STEP)
-	player.wvalues=make([]int,MAX_STEP,MAX_STEP)
+	player.bshapes=make(map[int]int)
+	player.wshapes=make(map[int]int)
 	player.rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 	if player.robot=color;color==BLACK{
 		player.human=WHITE
@@ -173,22 +186,38 @@ func (player* AIPlayer)SetStep(x int,y int){
 }
 
 func (player* AIPlayer)ApplyStep(st StepInfo){
-	bval,wval:=0,0
+	var bshapes,wshapes map[int] int
 	if player.curstep>0{
-		bval,wval=player.Evaluate(st.x,st.y)
+		bshapes,wshapes=player.CalShape(st.x,st.y)
 	}
 	player.frame[st.x][st.y]=st.bw
 	player.steps[player.curstep]=st
 	player.curstep++
-	nbval,nwval:=player.Evaluate(st.x,st.y)
+	nbshapes,nwshapes:=player.CalShape(st.x,st.y)
 	if player.curstep>1{
-		player.bvalues[player.curstep-1]= player.bvalues[player.curstep-2]+nbval-bval
-		player.wvalues[player.curstep-1]= player.wvalues[player.curstep-2]+nwval-wval
-	}else{
-        player.bvalues[player.curstep-1]=nbval
-        player.wvalues[player.curstep-1]=nwval
+	// remove old
+		for k,v:=range bshapes{
+			if player.bshapes[k]<v{
+				log.Printf("Error! bshapes %d count :%d < %d\n",k,bshapes[k],v)
+			}else{
+				player.bshapes[k]-=v
+			}
+		}
+		for k,v:=range wshapes{
+            if player.wshapes[k]<v{
+                log.Printf("Error! wshapes %d count :%d < %d\n",k,wshapes[k],v)
+            }else{
+                player.wshapes[k]-=v
+            }
+		}
 	}
-
+// add new
+    for k,v:=range nbshapes{
+		player.bshapes[k]+=v
+    }
+    for k,v:=range nwshapes{
+		player.wshapes[k]+=v
+    }
 }
 
 func (player* AIPlayer)UnsetStep(x,y int){
@@ -220,16 +249,6 @@ func (player* AIPlayer)GetFrame() [15][15] int{
 
 func (player* AIPlayer)ListSteps() ([]StepInfo,int){
 	return player.steps,player.curstep
-}
-
-type Conti struct{
-	leftsp int
-	rightsp int
-	spmid int
-	length	int
-	bw int // color
-	conttype int
-	isnew bool // created by latest chess
 }
 
 func (part *Conti)ParseType()int{
@@ -287,18 +306,6 @@ func (part *Conti)ParseType()int{
 	return ret
 }
 
-func (part *Conti)CountScore(nextmove int) int{
-// nextmove: 1-> black; 2->white; 0->ignore
-	score:=0
-	contype:=part.ParseType()
-	if nextmove==part.bw{
-		score=FScoreTB[contype]
-	}else{
-		score=BScoreTB[contype]
-	}
-	return score
-}
-
 func (part *Conti)AddTail(cont int) int {
 // return 0: if the part continue to be counted
 // return 1: if part continue and a space in mid, need create "end" later
@@ -330,14 +337,57 @@ func (part *Conti)AddTail(cont int) int {
 	return ret
 }
 
-func (player* AIPlayer) CountScore(parts []Conti)(int,int){
-	bs,ws:=0,0
+/*
+func (part *Conti)CountScore(nextmove int) int{
+// nextmove: 1-> black; 2->white; 0->ignore
+	score:=0
+	contype:=part.ParseType()
+	if nextmove==part.bw{
+		score=FScoreTB[contype]
+	}else{
+		score=BScoreTB[contype]
+	}
+	return score
+}*/
+
+func (player* AIPlayer)GetCurValues()(int,int){
+	if player.curstep<1{
+		return 0,0
+	}
+	over:=player.IsOver()
+	if over==BLACK{// check black in CheckForbid already
+		return WIN,0
+	}else if over==WHITE{
+		return 0,WIN
+	}
+	nextmove:=player.curstep%2+1
+	bval,wval:=0,0
+	var btable, wtable []int
+	if nextmove==BLACK{
+		btable=FScoreTB[:]
+		wtable=BScoreTB[:]
+	}else{
+		btable=BScoreTB[:]
+		wtable=FScoreTB[:]
+	}
+	for k,v:= range player.bshapes{
+		bval+=btable[k]*v
+	}
+	for k,v:= range player.wshapes{
+		wval+=wtable[k]*v
+	}
+	return bval,wval
+}
+
+func (player* AIPlayer) CountShape(parts []Conti)(map [int]int,map[int]int){
+	bs:=make(map[int]int)
+	ws:=make(map[int]int)
 //	nextmove:=player.curstep%2+1
 	for  _,part:=range parts{
 		if part.bw==BLACK{
-			bs+=part.CountScore(player.human)
+			bs[part.ParseType()]++
 		}else{
-			ws+=part.CountScore(player.human)
+			ws[part.ParseType()]++
 		}
 	}
 	return bs,ws
@@ -511,7 +561,7 @@ func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	topleft:=make([]int,0,15)
 	topright:=make([]int,0,15)
 
-	places:=make([]int,4,4)
+	places:=make([]int,4,4) // place is the index of the new piece in 1-D line
 
 	for i:=0;i<15; i++{
 		hor=append(hor,player.frame[i][y])
@@ -549,7 +599,7 @@ func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	return lines,places
 }
 
-func (player* AIPlayer)Evaluate(x,y int)(int,int){
+func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int){
 	lines,places:=player.CrossLines(x,y)
 
 	parts:=make([]Conti,0,MAX_STEP)
@@ -557,14 +607,10 @@ func (player* AIPlayer)Evaluate(x,y int)(int,int){
 		parts=append(parts,player.CountLineParts(lines[i],places[i])...)
 	}
 	if len(parts)==0{
-		return 0,0
+		return nil,nil
 	}
 
-	if player.CheckForbid(x,y)!=0{// check black in CheckForbid already
-		return 0,FORBIDDEN
-	}
-
-	return player.CountScore(parts)
+	return player.CountShape(parts)
 }
 
 func (player* AIPlayer)chessaround(x,y int) bool{
@@ -619,7 +665,7 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	maxscore:=SCORE_INIT
 	for i:=0;i<nstep;i++{
 		player.ApplyStep(allst[i])
-		bscore,wscore:=player.bvalues[player.curstep-1],player.wvalues[player.curstep-1]
+		bscore,wscore:=player.GetCurValues()//player.bvalues[player.curstep-1],player.wvalues[player.curstep-1]
 		scores:=[2]int{bscore,wscore}
 		val:=scores[player.robot-1]-scores[player.human-1]
 		if val>maxscore{
@@ -640,67 +686,86 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 
 func (player* AIPlayer)GetMax(x,y int,level int) int{
 	if level==0{
-		b,w:=player.Evaluate(x,y)
+		b,w:=player.GetCurValues()
 		if player.robot==BLACK{
 			return b-w
 		}else{
 			return w-b
 		}
 	}
+
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
-	min:= -SCORE_INIT
-	if nstep<1{
-        b,w:=player.Evaluate(x,y)
+	max:= SCORE_INIT
+	if nstep<1{// no place left
+		return 0 // drawn 
+    /*    b,w:=player.GetCurValue(x,y)
         if player.robot==BLACK{
             return b-w
         }else{
             return w-b
-        }
+        }*/
 	}else{
 		for i:=0;i<nstep;i++{
 			player.ApplyStep(allst[i])
-			value:=player.GetMin(allst[i].x,allst[i].y,level-1)
-			if value<min{
-				min=value
+			over:=player.IsOver()
+			if over== player.robot{
+				player.UnapplyStep(allst[i])
+				return WIN
+			}else if over==player.human{
+				max= -WIN
+			}else{
+				value:=player.GetMin(allst[i].x,allst[i].y,level-1)
+				if value>max{
+					max=value
+				}
 			}
+			player.UnapplyStep(allst[i])
 		}
-		return min
 	}
+	return  max
 }
 
 func (player* AIPlayer)GetMin(x,y int,level int) int{
 	if level==0{
-		b,w:=player.Evaluate(x,y)
+		b,w:=player.GetCurValues()
 		if player.robot==BLACK{
 			return b-w
 		}else{
 			return w-b
 		}
 	}
-	allst:=player.getallstep(player.robot) // always player.robot
+
+	allst:=player.getallstep(player.human) // always player.human
 	nstep:=len(allst)
-	max:= SCORE_INIT
-//	minsts:=make([]StepInfo,0,MAX_STEP)
-	if nstep<1{
-        b,w:=player.Evaluate(x,y)
+	min:= -SCORE_INIT
+	if nstep<1{// no place left
+		return 0 // drawn 
+    /*    b,w:=player.GetCurValue(x,y)
         if player.robot==BLACK{
             return b-w
         }else{
             return w-b
-        }
-
+        }*/
 	}else{
 		for i:=0;i<nstep;i++{
 			player.ApplyStep(allst[i])
-			value:=player.GetMax(allst[i].x,allst[i].y,level-1)
-			if value>max{
-				max=value
+			over:=player.IsOver()
+			if over== player.human{
+				player.UnapplyStep(allst[i])
+				return -WIN
+			}else if over==player.robot{
+				min=WIN
+			}else{
+				value:=player.GetMax(allst[i].x,allst[i].y,level-1)
+				if value<min{
+					min=value
+				}
 			}
+			player.UnapplyStep(allst[i])
 		}
-		return max
 	}
-
+	return  min
 }
 
 func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
@@ -713,13 +778,25 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 	}else{
 		for i:=0;i<nstep;i++{
 			player.ApplyStep(allst[i])
-			value:=player.GetMin(allst[i].x,allst[i].y,player.level)
-			if value>max{
-				maxsts=make([]StepInfo,0,MAX_STEP)
-				maxsts=append(maxsts,allst[i])
-				max=value
-			}else if value==max{
-				maxsts=append(maxsts,allst[i])
+			over:=player.IsOver()
+			if over== player.robot{
+				player.UnapplyStep(allst[i])
+				return  &allst[i]
+			}else{
+				var value int
+				if over==player.human{
+					value= -WIN
+				}else{
+					value=player.GetMin(allst[i].x,allst[i].y,player.level)
+				}
+				if value>max{
+					maxsts=make([]StepInfo,0,MAX_STEP)
+					maxsts=append(maxsts,allst[i])
+					max=value
+				}else if value==max{
+					maxsts=append(maxsts,allst[i])
+				}
+			player.UnapplyStep(allst[i])
 			}
 		}
 	}

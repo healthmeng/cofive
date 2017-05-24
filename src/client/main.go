@@ -116,7 +116,7 @@ func main() {
 		return
 	}
 	fmt.Println("Start:")
-	player, err := ai.InitPlayer(color, 0, true)
+	player, err := ai.InitPlayer(color, 2, true)
 	if err != nil {
 		fmt.Println("Init server error:", err)
 		return
