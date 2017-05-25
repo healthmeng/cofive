@@ -35,6 +35,7 @@ const(
 	NCC
 	C
 	NC
+	END
 )
 
 var BScoreTB [11]int =[...]int{
@@ -86,7 +87,8 @@ type AIPlayer struct{
 	forbid bool
 	steps []StepInfo
 //	bvalues, wvalues []int
-	bshapes, wshapes map[int]int
+	bshapes,wshapes []map[int] int
+//	bshapes, wshapes map[int]int
 	curstep int
 	robot, human int
 	rnd	*rand.Rand
@@ -106,8 +108,8 @@ func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 	player.level=level
 	player.forbid=forbid
 	player.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
-	player.bshapes=make(map[int]int)
-	player.wshapes=make(map[int]int)
+	player.bshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
+	player.wshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
 	player.rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 	if player.robot=color;color==BLACK{
 		player.human=WHITE
@@ -190,34 +192,41 @@ func (player* AIPlayer)ApplyStep(st StepInfo){
 	if player.curstep>0{
 		bshapes,wshapes=player.CalShape(st.x,st.y)
 	}
+	curb:=make(map[int]int)
+	curw:=make(map[int]int)
 	player.frame[st.x][st.y]=st.bw
 	player.steps[player.curstep]=st
 	player.curstep++
 	nbshapes,nwshapes:=player.CalShape(st.x,st.y)
+
 	if player.curstep>1{
 	// remove old
-		for k,v:=range bshapes{
-			if player.bshapes[k]<v{
-				log.Printf("Error! bshapes %d count :%d < %d\n",k,bshapes[k],v)
-			}else{
-				player.bshapes[k]-=v
+		for i:=1;i<END;i++{
+			if player.bshapes[player.curstep-2][i]< bshapes[i]{
+				log.Printf("Error! bshapes %d count :%d < %d\n",i,player.bshapes[player.curstep-2][i],bshapes[i])
+			}
+			curb[i]=player.bshapes[player.curstep-2][i]
+			curw[i]=player.wshapes[player.curstep-2][i]
+			if bshapes[i]!=0{
+				curb[i]=player.bshapes[player.curstep-2][i]-bshapes[i]
+			}
+			if wshapes[i]!=0{
+				curw[i]=player.wshapes[player.curstep-2][i]-wshapes[i]
 			}
 		}
-		for k,v:=range wshapes{
-            if player.wshapes[k]<v{
-                log.Printf("Error! wshapes %d count :%d < %d\n",k,wshapes[k],v)
-            }else{
-                player.wshapes[k]-=v
-            }
+	}
+
+// add new
+	for i:=1;i<END;i++{
+		if nbshapes[i]!=0{
+			curb[i]+=nbshapes[i]
+		}
+		if nwshapes[i]!=0{
+			curw[i]+=nwshapes[i]
 		}
 	}
-// add new
-    for k,v:=range nbshapes{
-		player.bshapes[k]+=v
-    }
-    for k,v:=range nwshapes{
-		player.wshapes[k]+=v
-    }
+	player.bshapes[player.curstep-1]=curb
+	player.wshapes[player.curstep-1]=curw
 }
 
 func (player* AIPlayer)UnsetStep(x,y int){
@@ -370,10 +379,10 @@ func (player* AIPlayer)GetCurValues()(int,int){
 		btable=BScoreTB[:]
 		wtable=FScoreTB[:]
 	}
-	for k,v:= range player.bshapes{
+	for k,v:= range player.bshapes[player.curstep-1]{
 		bval+=btable[k]*v
 	}
-	for k,v:= range player.wshapes{
+	for k,v:= range player.wshapes[player.curstep-1]{
 		wval+=wtable[k]*v
 	}
 	return bval,wval
@@ -425,7 +434,11 @@ func (player* AIPlayer)CountLineParts(line[]int,newone int)[]Conti{
 			if front!=nil{
 				front.AddTail(0)
 				if end!=nil{
-					end.AddTail(0)
+					if line[i+1]==end.bw{// **-**-
+						end.AddTail(0)
+					}else{
+						end=nil
+					}
 				}
 			}
 		default: // line[i]!=0

@@ -32,7 +32,7 @@ func draw(player *ai.AIPlayer) {
 
 func simulate(show bool) int {
 	player1, _ := ai.InitPlayer(1, 0, true)
-	player2, _ := ai.InitPlayer(2, 0, true)
+	player2, _ := ai.InitPlayer(2, 2, true)
 	over := 0
 	for {
 		x, y := player1.GetStep()
@@ -124,7 +124,8 @@ func main() {
 		return
 	}
 	fmt.Println("Start:")
-	player, err := ai.InitPlayer(color, 2, true)
+	player, err := ai.InitPlayer(color,2 , true)
+	//player, err := ai.InitPlayer(color, 2, true)
 	if err != nil {
 		fmt.Println("Init server error:", err)
 		return
