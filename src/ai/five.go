@@ -688,7 +688,7 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	return nil
 }
 
-func (player* AIPlayer)Draw(){
+func (player* AIPlayer)Draw(hl bool){
 	frame := player.GetFrame()
 	fmt.Print("  ")
 	for i := 0; i < 15; i++ {
@@ -702,7 +702,7 @@ func (player* AIPlayer)Draw(){
 		for j := 0; j < 15; j++ {
 			bstr:=" x"
 			wstr:=" o"
-			if j==x && i==y{
+			if hl && j==x && i==y{
 				bstr=" \033[7mx\033[0m"
 				wstr=" \033[7mo\033[0m"
 			}
@@ -724,9 +724,11 @@ func (player* AIPlayer)Draw(){
 func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
-		if b>=WIN || w>=WIN{
-			log.Println("Get win map:")
-			player.Draw()
+		if b>=10000 || w>=10000{
+			log.Println("to min: Get win map:", player.curstep, "b,w:",b,w)
+			player.Draw(false)
+		}else{
+			log.Println("to min: Get win map:", player.curstep, "b,w:",b,w)
 		}
 
 		if player.robot==BLACK{
@@ -744,7 +746,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 	}else{
 		for i:=0;i<nstep;i++{
 			player.ApplyStep(allst[i])
-			over:=0
+/*			over:=0
 //			over:=player.IsOver()
 			if over== player.robot{
 				b,w:=player.GetCurValues()
@@ -756,12 +758,12 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 				}
 			}else if over==player.human{
 				alpha= -WIN
-			}else{
+			}else{*/
 				value:=player.GetMin(allst[i].x,allst[i].y,level-1,alpha)
 				if value>alpha{
 					alpha=value
 				}
-			}
+		//	}
 			player.UnapplyStep(allst[i])
 			if alpha>=beta{
 				break
@@ -774,10 +776,11 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
-		if b>=WIN || w>=WIN{
-			log.Println("Get win map:")
-			player.Draw()
+		if b>=50000 || w>=50000{
+			log.Println("to max: Get win map:", player.curstep, "b,w:",b,w, "robot:",player.robot)
+			player.Draw(false)
 		}
+
 		if player.robot==BLACK{
 			return b-w
 		}else{
@@ -794,7 +797,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 		for i:=0;i<nstep;i++{
 			player.ApplyStep(allst[i])
 //			over:=player.IsOver()
-			over:=0
+/*			over:=0
 			if over== player.human{
 				b,w:=player.GetCurValues()
 				player.UnapplyStep(allst[i])
@@ -805,12 +808,12 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 				}
 			}else if over==player.robot{
 				beta=WIN
-			}else{
+			}else{*/
 				value:=player.GetMax(allst[i].x,allst[i].y,level-1,beta)
 				if value<beta{
 					beta=value
 				}
-			}
+//			}
 			player.UnapplyStep(allst[i])
 			if beta<=alpha {
 				break
@@ -841,6 +844,7 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 				}else{
 					value=player.GetMin(allst[i].x,allst[i].y,player.level,max)
 				}
+log.Println("applying: ",allst[i].x,allst[i].y, value)
 				if value>max{
 					maxsts=make([]StepInfo,0,MAX_STEP)
 					maxsts=append(maxsts,allst[i])
