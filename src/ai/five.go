@@ -20,7 +20,7 @@ const(
 	WHITE=2
 	SCORE_INIT= -2000000
 	FORBIDDEN = -500000
-	WIN=1000000
+	WIN= 1000000
 )
 
 const(
@@ -40,7 +40,7 @@ const(
 
 var BScoreTB [11]int =[...]int{
 	0,	// NONE
-	50000,	// CCCCC
+	500000,	// CCCCC
 	900,	//CC_CCC
 	5000,	// CCCC
 	800,	// NCCCC,
@@ -54,7 +54,7 @@ var BScoreTB [11]int =[...]int{
 
 var FScoreTB [11] int=[...]int{
 	0,	// NONE
-	50000,	// CCCCC
+	500000,	// CCCCC
 	15000,	//CC_CCC
 	20000,	// CCCC
 	15000,	// NCCCC
@@ -679,7 +679,7 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	return nil
 }
 
-func (player* AIPlayer)GetMax(x,y int,level int) int{
+func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
 		if player.robot==BLACK{
@@ -691,7 +691,7 @@ func (player* AIPlayer)GetMax(x,y int,level int) int{
 
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
-	max:= SCORE_INIT
+	alpha:= SCORE_INIT
 	if nstep<1{// no place left
 		return 0 // drawn 
     /*    b,w:=player.GetCurValue(x,y)
@@ -708,20 +708,23 @@ func (player* AIPlayer)GetMax(x,y int,level int) int{
 				player.UnapplyStep(allst[i])
 				return WIN
 			}else if over==player.human{
-				max= -WIN
+				alpha= -WIN
 			}else{
-				value:=player.GetMin(allst[i].x,allst[i].y,level-1)
-				if value>max{
-					max=value
+				value:=player.GetMin(allst[i].x,allst[i].y,level-1,alpha)
+				if value>alpha{
+					alpha=value
 				}
 			}
 			player.UnapplyStep(allst[i])
+			if alpha>beta{
+				break
+			}
 		}
 	}
-	return  max
+	return alpha
 }
 
-func (player* AIPlayer)GetMin(x,y int,level int) int{
+func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
 		if player.robot==BLACK{
@@ -733,7 +736,7 @@ func (player* AIPlayer)GetMin(x,y int,level int) int{
 
 	allst:=player.getallstep(player.human) // always player.human
 	nstep:=len(allst)
-	min:= -SCORE_INIT
+	beta:= -SCORE_INIT
 	if nstep<1{// no place left
 		return 0 // drawn 
     /*    b,w:=player.GetCurValue(x,y)
@@ -750,17 +753,20 @@ func (player* AIPlayer)GetMin(x,y int,level int) int{
 				player.UnapplyStep(allst[i])
 				return -WIN
 			}else if over==player.robot{
-				min=WIN
+				beta=WIN
 			}else{
-				value:=player.GetMax(allst[i].x,allst[i].y,level-1)
-				if value<min{
-					min=value
+				value:=player.GetMax(allst[i].x,allst[i].y,level-1,beta)
+				if value<beta{
+					beta=value
 				}
 			}
 			player.UnapplyStep(allst[i])
+			if beta<alpha{
+				break
+			}
 		}
 	}
-	return  min
+	return beta
 }
 
 func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
@@ -768,6 +774,7 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 	nstep:=len(allst)
 	max:=SCORE_INIT
 	maxsts:=make([]StepInfo,0,MAX_STEP)
+	alpha:= max
 	if nstep<1{
 		return nil
 	}else{
@@ -782,7 +789,7 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 				if over==player.human{
 					value= -WIN
 				}else{
-					value=player.GetMin(allst[i].x,allst[i].y,player.level)
+					value=player.GetMin(allst[i].x,allst[i].y,player.level,alpha)
 				}
 				if value>max{
 					maxsts=make([]StepInfo,0,MAX_STEP)
@@ -791,9 +798,13 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 				}else if value==max{
 					maxsts=append(maxsts,allst[i])
 				}
+				alpha=max
 			player.UnapplyStep(allst[i])
 			}
 		}
+	}
+	if  max== -WIN{
+		log.Println("Already lost")
 	}
 	nsts:=len(maxsts)
 	if nsts>0{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+var l1,l2 int
 func draw(player *ai.AIPlayer) {
 	frame := player.GetFrame()
 	fmt.Print("  ")
@@ -31,8 +32,8 @@ func draw(player *ai.AIPlayer) {
 }
 
 func simulate(show bool) int {
-	player1, _ := ai.InitPlayer(1, 0, true)
-	player2, _ := ai.InitPlayer(2, 2, true)
+	player1, _ := ai.InitPlayer(1, l1, true)
+	player2, _ := ai.InitPlayer(2, l2, true)
 	over := 0
 	for {
 		x, y := player1.GetStep()
@@ -110,6 +111,8 @@ func main() {
 		if color%2 == 0 {
 			show = true
 		}
+	fmt.Println("Player1,2 level:")
+	fmt.Scanf("%d%d",&l1,&l2)
 		for i := 0; i < color; i++ {
 			switch simulate(show) {
 			case 1:
