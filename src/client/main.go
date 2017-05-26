@@ -6,7 +6,8 @@ import (
 )
 
 var l1,l2 int
-func draw(player *ai.AIPlayer) {
+/*
+func Draw(player *ai.AIPlayer) {
 	frame := player.GetFrame()
 	fmt.Print("  ")
 	for i := 0; i < 15; i++ {
@@ -37,7 +38,7 @@ func draw(player *ai.AIPlayer) {
 		}
 		fmt.Println("")
 	}
-}
+}*/
 
 func simulate(show bool) int {
 	player1, _ := ai.InitPlayer(1, l1, true)
@@ -46,7 +47,7 @@ func simulate(show bool) int {
 	for {
 		x, y := player1.GetStep()
 		if show {
-			draw(player1)
+			player1.Draw()
 		}
 		over = player1.IsOver()
 		if over == 1 {
@@ -63,7 +64,7 @@ func simulate(show bool) int {
 		player2.SetStep(x, y)
 		x, y = player2.GetStep()
 		if show {
-			draw(player2)
+			player2.Draw()
 		}
 		over = player2.IsOver()
 		if over != 0 {
@@ -86,12 +87,12 @@ func manual() {
 	//	p1:=ai.InitPlayer(BLACK)
 	//	p2:=ai.InitPlayer(WHITE)
 	p, _ := ai.InitPlayer(ai.WHITE, 0, true)
-	draw(p)
+	p.Draw()
 	for {
 		var x, y int
 		fmt.Scanln(&x, &y)
 		p.SetStep(x, y)
-		draw(p)
+		p.Draw()
 		if over := p.IsOver(); over != 0 {
 			if over == 1 {
 				fmt.Println("Black win")
@@ -131,7 +132,7 @@ func main() {
 				dw++
 			}
 		}
-		fmt.Printf("Total %d times, black win %d, white win %d, drawn %d\n", color, bw, ww, dw)
+		fmt.Printf("Total %d times, black win %d, white win %d, Drawn %d\n", color, bw, ww, dw)
 		return
 	}
 	fmt.Println("Start:")
@@ -145,17 +146,17 @@ func main() {
 	if color == ai.BLACK {
 		player.GetStep()
 	}
-	draw(player)
+	player.Draw()
 	for ; over == 0; over = player.IsOver() {
 		var x, y int
 		fmt.Scanln(&x, &y)
 		player.SetStep(x, y)
-		draw(player)
+		player.Draw()
 		if over = player.IsOver(); over != 0 {
 			break
 		}
 		x, y = player.GetStep()
-		draw(player)
+		player.Draw()
 		player.DebugStep()
 	}
 	if over == 1 {
