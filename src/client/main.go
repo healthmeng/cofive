@@ -13,16 +13,24 @@ func draw(player *ai.AIPlayer) {
 		fmt.Printf("%2d", i)
 	}
 	fmt.Println("")
+
+	x,y:=player.GetLastStep()
 	for i := 0; i < 15; i++ {
 		fmt.Printf("%-2d", i)
 		for j := 0; j < 15; j++ {
+			bstr:=" x"
+			wstr:=" o"
+			if j==x && i==y{
+				bstr=" \033[7mx\033[0m"
+				wstr=" \033[7mo\033[0m"
+			}
 			switch frame[j][i] {
 			case 0:
 				fmt.Printf(" .")
 			case 1:
-				fmt.Printf(" x")
+				fmt.Printf(bstr)
 			case 2:
-				fmt.Printf(" o")
+				fmt.Printf(wstr)
 			default:
 				fmt.Printf(" ?")
 			}
