@@ -47,7 +47,7 @@ func simulate(show bool) int {
 	for {
 		x, y := player1.GetStep()
 		if show {
-			player1.Draw()
+			player1.Draw(true)
 		}
 		over = player1.IsOver()
 		if over == 1 {
@@ -64,7 +64,7 @@ func simulate(show bool) int {
 		player2.SetStep(x, y)
 		x, y = player2.GetStep()
 		if show {
-			player2.Draw()
+			player2.Draw(true)
 		}
 		over = player2.IsOver()
 		if over != 0 {
@@ -87,12 +87,12 @@ func manual() {
 	//	p1:=ai.InitPlayer(BLACK)
 	//	p2:=ai.InitPlayer(WHITE)
 	p, _ := ai.InitPlayer(ai.WHITE, 0, true)
-	p.Draw()
+	p.Draw(true)
 	for {
 		var x, y int
 		fmt.Scanln(&x, &y)
 		p.SetStep(x, y)
-		p.Draw()
+		p.Draw(true)
 		if over := p.IsOver(); over != 0 {
 			if over == 1 {
 				fmt.Println("Black win")
@@ -146,17 +146,17 @@ func main() {
 	if color == ai.BLACK {
 		player.GetStep()
 	}
-	player.Draw()
+	player.Draw(true)
 	for ; over == 0; over = player.IsOver() {
 		var x, y int
 		fmt.Scanln(&x, &y)
 		player.SetStep(x, y)
-		player.Draw()
+		player.Draw(true)
 		if over = player.IsOver(); over != 0 {
 			break
 		}
 		x, y = player.GetStep()
-		player.Draw()
+		player.Draw(true)
 		player.DebugStep()
 	}
 	if over == 1 {
