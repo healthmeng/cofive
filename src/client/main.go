@@ -132,7 +132,7 @@ func main() {
 				dw++
 			}
 		}
-		fmt.Printf("Total %d times, black win %d, white win %d, Drawn %d\n", color, bw, ww, dw)
+		fmt.Printf("player1:%d, player2:%d. Total %d times, black win %d, white win %d, Drawn %d\n",l1,l2, color, bw, ww, dw)
 		return
 	}
 	fmt.Println("Start:")
