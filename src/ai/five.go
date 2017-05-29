@@ -267,12 +267,12 @@ func (player* AIPlayer)UnsetStep(x,y int){
 	}
 }
 
-func (player* AIPlayer)GetStep()(int,int){
+func (player* AIPlayer)GetStep(debug bool)(int,int){
 	var st *StepInfo
 	if player.level==0{
 		st=player.DirectAlgo()
 	}else{
-		st=player.MinMaxAlgo()
+		st=player.MinMaxAlgo(debug)
 	}
 	if st==nil{
 	//	log.Println("Drawn!")
@@ -981,7 +981,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 	return beta
 }
 
-func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
+func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
 	max:=SCORE_INIT
@@ -1022,6 +1022,9 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 		}
 	}
 	nsts:=len(maxsts)
+	if debug{
+		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level+1,max)
+	}
 	if nsts>0{
 		return &maxsts[player.rnd.Int()%nsts]
 	}
