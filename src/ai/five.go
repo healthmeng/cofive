@@ -751,41 +751,47 @@ func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int){
 	return player.CountShape(parts)
 }
 
-func (player* AIPlayer)chessaround(x,y int) bool{
-	for i:=x-2;i<=x+2;i++{
-		if i<0 || i>=15{
-			continue
-		}
-		for j:=y-2;j<y+2;j++{
-			if j<0 || j>=15{
-				continue
-			}
-			if player.frame[i][j]!=0{
-				return true
-			}
-		}
-	}
-	return false
+
+type PT struct {
+    x, y int
 }
 
-func (player* AIPlayer)getallstep(side int)[]StepInfo{
-	sts:=make ([]StepInfo,0,MAX_STEP)
-	if player.curstep==0{
-		if side!=BLACK{
-			log.Println("Error, first step should be black turn")
-		}
-		sts=append(sts,StepInfo{7,7,side})
-	}else{
-		for i:=0;i<15;i++{
-			for j:=0;j<15;j++{
-				if player.frame[i][j]==0 && player.chessaround(i,j) {
-					sts=append(sts,StepInfo{i,j,side})
-				}
-			}
-		}
-	}
-	return sts
+func (player *AIPlayer) getallstep(side int) []StepInfo {
+    sts := make([]StepInfo, 0, MAX_STEP)
+    if player.curstep == 0 {
+        if side != BLACK {
+            log.Println("Error, first step should be black turn")
+        }
+        sts = append(sts, StepInfo{7, 7, side})
+    } else {
+        stmap := make(map[PT]bool)
+        for i := player.curstep - 1; i >= 0; i-- { /*
+                pts:=player.chessaround(player.steps[i].x,player.steps[i].y)
+                for _,v:=pts*/
+            x := player.steps[i].x
+            y := player.steps[i].y
+            for i := x - 2; i <= x+2; i++ {
+                if i < 0 || i >= 15 {
+                    continue
+                }
+                for j := y - 2; j < y+2; j++ {
+                    if j < 0 || j >= 15 {
+                        continue
+                    }
+                    if player.frame[i][j] == 0 {
+                        pt := PT{i, j}
+                        if !stmap[pt] {
+                            stmap[pt] = true
+                            sts = append(sts, StepInfo{i, j, side})
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return sts
 }
+
 
 func (player* AIPlayer)UnapplyStep(st StepInfo){
 	player.frame[st.x][st.y]=0
