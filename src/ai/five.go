@@ -60,7 +60,7 @@ var BScoreTB [15]int =[...]int{
 	200,	// CC 
 	20,		// NCC
 	20,		// C
-	10,		// NC
+	0,		// NC
 }
 
 var FScoreTB [15] int=[...]int{
@@ -78,7 +78,7 @@ var FScoreTB [15] int=[...]int{
 	200,	// CC 
 	20,		// NCC
 	20,		// C
-	10,		// NC
+	0,		// NC
 }
 
 var IsWin bool =false
