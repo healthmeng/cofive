@@ -48,6 +48,7 @@ func simulate(show bool) int {
 		x, y := player1.GetStep()
 		if show {
 			player1.Draw(true)
+			player1.DebugStep()
 		}
 		over = player1.IsOver()
 		if over == 1 {
@@ -60,11 +61,17 @@ func simulate(show bool) int {
 			fmt.Println("Drawn...")
 			}
 			return -1
+		}else if over==2{
+			if show{
+			fmt.Println("White win")
+			}
+			return 2
 		}
 		player2.SetStep(x, y)
 		x, y = player2.GetStep()
 		if show {
 			player2.Draw(true)
+			player2.DebugStep()
 		}
 		over = player2.IsOver()
 		if over != 0 {

@@ -11,6 +11,8 @@ import (
 "log"
 "errors"
 "time"
+"strings"
+"runtime"
 "fmt"
 "math/rand"
 )
@@ -27,7 +29,11 @@ const(
 const(
 	NONE=iota
 	CCCCC
+	CCCCCC
+	CCCC_C
+	CCC_CC
 	CC_CCC
+	NCC_CCCN
 	CCCC
 	NCCCC
 	CCC
@@ -39,12 +45,16 @@ const(
 	END
 )
 
-var BScoreTB [11]int =[...]int{
+var BScoreTB [15]int =[...]int{
 	0,	// NONE
 	WIN,	// CCCCC
-	900,	//CC_CCC
+	WIN,	// CCCCCC
+	10000,	//CCCC_C
+	2150,	// CCC_CC
+	2020,	// CC_CCC
+	2000,	// NCC_CCCN
 	10000,	// CCCC
-	800,	// NCCCC,
+	2000,	// NCCCC,
 	800,	// CCC
 	150,	// NCCC
 	200,	// CC 
@@ -53,10 +63,14 @@ var BScoreTB [11]int =[...]int{
 	10,		// NC
 }
 
-var FScoreTB [11] int=[...]int{
+var FScoreTB [15] int=[...]int{
 	0,	// NONE
 	WIN,	// CCCCC
-	15000,	//CC_CCC
+	WIN,	// CCCCCC
+	40000,	// CCCC_C
+	15150,	// CCC_CC
+	15020,	// CC_CCC
+	15000,	// NCC_CCCN
 	40000,	// CCCC
 	15000,	// NCCCC
 	1500,	// CCC
@@ -65,6 +79,14 @@ var FScoreTB [11] int=[...]int{
 	20,		// NCC
 	20,		// C
 	10,		// NC
+}
+
+var IsWin bool =false
+
+func init(){
+	if strings.ToLower(runtime.GOOS)=="windows"{
+		IsWin=true
+	}
 }
 
 type StepInfo struct{
@@ -314,10 +336,39 @@ func (part *Conti)ParseType()int{
 				}
 			}
 		case cont>=5:
-			if midsp==0{
-				ret=CCCCC
-			}else{
-				ret=CC_CCC
+			maxcont:=part.spmid
+			if maxcont<cont-part.spmid{
+				maxcont=cont-part.spmid
+			}
+			if maxcont==5{
+					ret=CCCCC
+			}else if maxcont>5{
+					ret=CCCCCC
+			} else{
+				max:=0
+				if maxcont!=part.spmid{	// right part
+					if maxcont+part.rightsp>4{
+						max=maxcont
+					}else if part.spmid+part.leftsp>4{
+						max=part.spmid
+					}
+				}else{ // left part
+					if part.spmid+part.leftsp>4{
+						max=part.spmid
+					}else if maxcont+part.rightsp>4{
+						max=maxcont
+					}
+				}
+				switch max{
+					case 4:
+						ret=CCCC_C
+					case 3:
+						ret=CCC_CC
+					case 2:
+						ret=CC_CCC
+					default:
+						ret=NCC_CCCN
+				}
 			}
 	}
 	part.conttype=ret
@@ -380,6 +431,7 @@ func (player* AIPlayer)GetCurValues()(int,int){
 	}*/
 	nextmove:=player.curstep%2+1
 	bval,wval:=0,0
+	bd3,wd3,b4,w4:=0,0,0,0
 	var btable, wtable []int
 	if nextmove==BLACK{
 		btable=FScoreTB[:]
@@ -388,12 +440,88 @@ func (player* AIPlayer)GetCurValues()(int,int){
 		btable=BScoreTB[:]
 		wtable=FScoreTB[:]
 	}
+	if player.forbid{
+		btable[CCCCCC]= -WIN
+		btable[CCCC_C]= btable[NCCCC]
+		btable[CCC_CC]= btable[NCCC]
+		btable[CC_CCC]= btable[NCC]
+		btable[NCC_CCCN]=0
+	}
+
+bout:
 	for k,v:= range player.bshapes[player.curstep-1]{
+		switch k{
+		case CCCCC :
+			if v>0{
+				bval=WIN
+				break bout
+			}
+		case CCCCCC :
+			if v>0{
+				if player.forbid{
+					bval= -WIN
+				}else{
+					bval=WIN
+				}
+				break bout
+			}
+		case CCC:
+			bd3=v
+		case NCCCC :
+			fallthrough
+		case CCCC_C:
+			fallthrough
+		case CCCC:
+			b4+=v
+		}
 		bval+=btable[k]*v
 	}
+
+wout:
 	for k,v:= range player.wshapes[player.curstep-1]{
+		switch k{
+		case CCCCC :
+			fallthrough
+		case CCCCCC :
+			if v>0{
+				wval=WIN
+				break wout
+			}
+		case CCC:
+			wd3=v
+		case NCCCC :
+			fallthrough
+		case CCCC_C :
+			fallthrough
+		case CCCC :
+			w4+=v
+		}
 		wval+=wtable[k]*v
 	}
+
+	if nextmove==WHITE{
+		if bd3==1 && b4==1 && w4<1{	// 4-3
+			bval+=10000
+		}
+		if !player.forbid{
+			if b4>1 && w4<1{	//4-4
+				bval+=10000
+			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
+				bval+=2000
+			}
+		}
+	}else if nextmove==BLACK{
+		if wd3>=1 && w4>=1 && b4<1{
+			wval+=10000
+		}
+		if w4>1 && b4<1{
+			wval+=10000
+		}
+		if wd3>1 && (b4<1 && bd3<1){
+			wval+=2000
+		}
+	}
+
 	return bval,wval
 }
 
@@ -531,15 +659,21 @@ func (player* AIPlayer)hasforbid(parts []Conti) int{
 				}
 			case CCCC:
 				fallthrough
+			case CCCC_C:
+				fallthrough
+			case CCC_CC:
+				fallthrough
+			case CC_CCC:
+				fallthrough
+			case NCC_CCCN:
+				fallthrough
 			case NCCCC:
 				nCCCC++
 				if nCCCC>=2{
 					return CCCC
 				}
-			case CCCCC:
-				if p.length>5{
-					return CCCCC
-				}
+			case CCCCCC:
+				return CCCCCC
 			}
 		}
 	}
@@ -547,7 +681,7 @@ func (player* AIPlayer)hasforbid(parts []Conti) int{
 }
 
 func (player* AIPlayer)CheckForbid(x,y int) int{
-	if player.frame[x][y] == BLACK {
+	if player.forbid{
 		lines,places:=player.CrossLines(x,y)
 		parts:=make([]Conti,0,MAX_STEP)
 		for i:=0;i<4;i++{
@@ -667,11 +801,20 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 //		return nil
 	results:=make ([]StepInfo,0,nstep)
 	maxscore:=SCORE_INIT
+	val:=0
 	for i:=0;i<nstep;i++{
 		player.ApplyStep(allst[i])
-		bscore,wscore:=player.GetCurValues()//player.bvalues[player.curstep-1],player.wvalues[player.curstep-1]
-		scores:=[2]int{bscore,wscore}
-		val:=scores[player.robot-1]-scores[player.human-1]
+        over:=player.IsOver()
+        if over== player.robot{
+           player.UnapplyStep(allst[i])
+			return &allst[i]
+		}else if over==0 {
+			bscore,wscore:=player.GetCurValues()//player.bvalues[player.curstep-1],player.wvalues[player.curstep-1]
+			scores:=[2]int{bscore,wscore}
+			val=scores[player.robot-1]-scores[player.human-1]
+		}else if over==player.human{
+			val= -WIN
+		}
 		if val>maxscore{
 			results=make([]StepInfo,1,nstep)
 			results[0]=allst[i]
@@ -703,8 +846,13 @@ func (player* AIPlayer)Draw(hl bool){
 			bstr:=" x"
 			wstr:=" o"
 			if hl && j==x && i==y{
-				bstr=" \033[7mx\033[0m"
-				wstr=" \033[7mo\033[0m"
+				if IsWin{
+					bstr="X"
+					wstr="O"
+				}else{
+					bstr=" \033[7mx\033[0m"
+					wstr=" \033[7mo\033[0m"
+				}
 			}
 			switch frame[j][i] {
 			case 0:
@@ -815,7 +963,8 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 					return w-b
 				}
 			}else if over==player.robot{
-				value=WIN
+				//log.Println("Error,impossible for black win in white turn")
+				value=WIN	// forbidden
 			}else{
 				value=player.GetMax(allst[i].x,allst[i].y,level-1,beta)
 			}
@@ -843,19 +992,20 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 		for i:=0;i<nstep;i++{
 			player.ApplyStep(allst[i])
 			over:=player.IsOver()
-			if over== player.robot || over==-1{
+			if over== player.robot || over== -1{
 				player.UnapplyStep(allst[i])
 				return  &allst[i]
 			}else{
 				var value int
 
 				if over==player.human{
-					b,w:=player.GetCurValues()
+/*					b,w:=player.GetCurValues()
 					if player.robot==BLACK{
 						value= b-w
 					}else{
 						value=w-b
-					}
+					}*/
+					value= -WIN
 				}else{
 					value=player.GetMin(allst[i].x,allst[i].y,player.level,max)
 				}
@@ -868,15 +1018,8 @@ func (player* AIPlayer)MinMaxAlgo(/*nlevel int should be even*/ ) *StepInfo{
 				}
 				player.UnapplyStep(allst[i])
 //				log.Printf("%d,%d value:%d\n",allst[i].x,allst[i].y,max)
-				if max>100000{
-					log.Println("Already win!\n\n")
-					break
-				}
 			}
 		}
-	}
-	if  max== -WIN{
-		log.Println("Already lost\n\n")
 	}
 	nsts:=len(maxsts)
 	if nsts>0{
