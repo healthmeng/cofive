@@ -765,24 +765,27 @@ func (player *AIPlayer) getallstep(side int) []StepInfo {
         sts = append(sts, StepInfo{7, 7, side})
     } else {
         stmap := make(map[PT]bool)
-        for i := player.curstep - 1; i >= 0; i-- { /*
+		var orders [4]int=[4]int{-1,1,-2,2}
+        for nst := player.curstep - 1; nst >= 0;nst-- { /*
                 pts:=player.chessaround(player.steps[i].x,player.steps[i].y)
                 for _,v:=pts*/
-            x := player.steps[i].x
-            y := player.steps[i].y
-            for i := x - 2; i <= x+2; i++ {
-                if i < 0 || i >= 15 {
+            x:= player.steps[nst].x
+            y:= player.steps[nst].y
+            for i:= 0 ;i<4;i++  {
+				tmpx:=orders[i]+x
+                if tmpx< 0 || tmpx >= 15 {
                     continue
                 }
-                for j := y - 2; j < y+2; j++ {
-                    if j < 0 || j >= 15 {
+                for j := 0;j<4; j++ {
+					tmpy:=orders[j]+y
+                    if tmpy < 0 || tmpy >= 15 {
                         continue
                     }
-                    if player.frame[i][j] == 0 {
-                        pt := PT{i, j}
+                    if player.frame[tmpx][tmpy] == 0 {
+                        pt := PT{tmpx, tmpy}
                         if !stmap[pt] {
                             stmap[pt] = true
-                            sts = append(sts, StepInfo{i, j, side})
+                            sts = append(sts, StepInfo{tmpx, tmpy, side})
                         }
                     }
                 }
@@ -926,7 +929,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 				alpha=value
 			}
 			player.UnapplyStep(allst[i])
-			if alpha>beta{
+			if alpha>=beta{
 				break
 			}
 		}
@@ -979,8 +982,14 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 			}
 
 			player.UnapplyStep(allst[i])
-			if beta<alpha {
-				break
+			if level==player.level-1{
+				if beta<alpha {
+					break
+				}
+			}else{
+				if beta<=alpha{
+					break
+				}
 			}
 		}
 	}
@@ -1013,7 +1022,7 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 					}*/
 					value= -WIN
 				}else{
-					value=player.GetMin(allst[i].x,allst[i].y,player.level,max)
+					value=player.GetMin(allst[i].x,allst[i].y,player.level-1,max)
 				}
 				if value>max{
 					maxsts=make([]StepInfo,0,MAX_STEP)
@@ -1029,7 +1038,7 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	}
 	nsts:=len(maxsts)
 	if debug{
-		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level+1,max)
+		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level,max)
 	}
 	if nsts>0{
 		return &maxsts[player.rnd.Int()%nsts]

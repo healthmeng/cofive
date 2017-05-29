@@ -138,6 +138,7 @@ func main() {
 			case -1:
 				dw++
 			}
+			fmt.Println("Current win times: black/white/drawn",bw,ww,dw)
 		}
 		fmt.Printf("player1:%d, player2:%d. Total %d times, black win %d, white win %d, Drawn %d\n",l1,l2, color, bw, ww, dw)
 		return
