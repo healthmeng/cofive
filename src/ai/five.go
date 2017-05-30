@@ -509,13 +509,13 @@ wout:
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval+=2000
 			}
-		}else{
+		}/*else{
 			if b4>1 && w4<1{	//4-4
 				bval= -WIN
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval=-WIN
 			}
-		}
+		}*/
 	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
 			wval+=10000
