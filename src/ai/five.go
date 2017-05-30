@@ -509,6 +509,12 @@ wout:
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval+=2000
 			}
+		}else{
+			if b4>1 && w4<1{	//4-4
+				bval= -WIN
+			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
+				bval=-WIN
+			}
 		}
 	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
@@ -765,18 +771,18 @@ func (player *AIPlayer) getallstep(side int) []StepInfo {
         sts = append(sts, StepInfo{7, 7, side})
     } else {
         stmap := make(map[PT]bool)
-		var orders [4]int=[4]int{-1,1,-2,2}
+		var orders [5]int=[5]int{-1,1,0,-2,2}
         for nst := player.curstep - 1; nst >= 0;nst-- { /*
                 pts:=player.chessaround(player.steps[i].x,player.steps[i].y)
                 for _,v:=pts*/
             x:= player.steps[nst].x
             y:= player.steps[nst].y
-            for i:= 0 ;i<4;i++  {
+            for i:= 0 ;i<5;i++  {
 				tmpx:=orders[i]+x
                 if tmpx< 0 || tmpx >= 15 {
                     continue
                 }
-                for j := 0;j<4; j++ {
+                for j := 0;j<5; j++ {
 					tmpy:=orders[j]+y
                     if tmpy < 0 || tmpy >= 15 {
                         continue
