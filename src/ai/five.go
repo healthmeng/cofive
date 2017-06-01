@@ -13,6 +13,7 @@ import (
 "time"
 "strings"
 "runtime"
+"sync"
 "fmt"
 "math/rand"
 )
@@ -82,11 +83,16 @@ var FScoreTB [15] int=[...]int{
 }
 
 var IsWin bool =false
+var ncpus int=0
+var maxvlock sync.RWMutex
+var steplock sync.Mutex
 
 func init(){
 	if strings.ToLower(runtime.GOOS)=="windows"{
 		IsWin=true
 	}
+	ncpus=runtime.NumCPU()
+	rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 type StepInfo struct{
@@ -114,7 +120,34 @@ type AIPlayer struct{
 //	bshapes, wshapes map[int]int
 	curstep int
 	robot, human int
-	rnd	*rand.Rand
+}
+
+func (dst* AIPlayer)Clone(src *AIPlayer){
+	for i:=0;i<15;i++{
+		for(j:=0;j<15;j++{
+			dst[i][j]=src[i][j]
+		}
+	}
+// already cloned in InitPlayer
+//	dst.level=src.level
+//	dst.forbid=src.forbid
+//	dst.robot=src.robot
+//	dst.human=src.human
+	dst.curstep=src.curstep
+
+// slices and map should be created already
+//	dst.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
+//	dst.bshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
+//	dst.wshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
+	for i:=0;i<src.curstep;i++{
+		dst.steps[i]=src.steps[i]
+		dst.bshapes[i]=make(map[int]int)
+		dst.wshapes[i]=make(map[int]int)
+		for j:=0;j<END;j++{
+			dst.bshapes[i][j]=src.bshapes[i][j]
+			dst.wshapes[i][j]=src.wshapes[i][j]
+		}
+	}
 }
 
 func (player* AIPlayer)GetLastStep()(x,y int){
@@ -141,7 +174,6 @@ func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 	player.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
 	player.bshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
 	player.wshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
-	player.rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 	if player.robot=color;color==BLACK{
 		player.human=WHITE
 	}else if color==WHITE{
@@ -499,7 +531,7 @@ wout:
 		wval+=wtable[k]*v
 	}
 
-	if nextmove==WHITE{
+//	if nextmove==WHITE{
 		if bd3==1 && b4==1 && w4<1{	// 4-3
 			bval+=10000
 		}
@@ -516,7 +548,7 @@ wout:
 				bval=-WIN
 			}
 		}*/
-	}else if nextmove==BLACK{
+//	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
 			wval+=10000
 		}
@@ -526,7 +558,7 @@ wout:
 		if wd3>1 && (b4<1 && bd3<1){
 			wval+=2000
 		}
-	}
+//	}
 
 	return bval,wval
 }
@@ -841,7 +873,7 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	}
 	nchoose:=len(results)
 	if nchoose>0{
-		return &results[player.rnd.Int()%nchoose]
+		return &results[rnd.Int()%nchoose]
 	}
 	return nil
 }
@@ -1002,52 +1034,83 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha int) int{
 	return beta
 }
 
+func SearchPara(player *AIPlayer,step StepInfo,finished chan int, max *int, maxsts *[]StepInfo, maxplayers *[]*AIPlayer){
+	player.ApplyStep(step)
+	over:=player.IsOver()
+	if over== player.robot || over== -1{
+		player.UnapplyStep(allst[i])
+		finished<-1
+	}else{
+		var value int
+
+		if over==player.human{
+			value= -WIN
+		}else{
+			value=player.GetMin(allst[i].x,allst[i].y,player.level-1,max)
+		}
+		if value>max{
+			maxsts=make([]StepInfo,0,MAX_STEP)
+			maxsts=append(maxsts,allst[i])
+			max=value
+		}else if value==max{
+			maxsts=append(maxsts,allst[i])
+		}
+		player.UnapplyStep(allst[i])
+		log.Printf("%d,%d value:%d\n",allst[i].x,allst[i].y,max)
+	}
+
+}
+
 func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
 	max:=SCORE_INIT
 	maxsts:=make([]StepInfo,0,MAX_STEP)
+	maxplayers:=make([]*AIPlayer,0,MAX_STEP)
 	if nstep<1{
 		return nil
 	}else{
-		for i:=0;i<nstep;i++{
-			player.ApplyStep(allst[i])
-			over:=player.IsOver()
-			if over== player.robot || over== -1{
-				player.UnapplyStep(allst[i])
-				return  &allst[i]
-			}else{
-				var value int
-
-				if over==player.human{
-/*					b,w:=player.GetCurValues()
-					if player.robot==BLACK{
-						value= b-w
-					}else{
-						value=w-b
-					}*/
-					value= -WIN
+		finished:=make(chan int,1)
+		istep:=0
+		ithreads:=0
+		for{
+			if i<nstep{
+				if ithread<ncpus{
+					ithread++
+					i++
+					// clone AIPlayer
+					np:=InitPlayer(player.robot,player.level,player.forbid)
+					np.Clone(player)
+					go SearchPara(np,allst[i],finished,&max,&maxsts,&maxplayers)
 				}else{
-					value=player.GetMin(allst[i].x,allst[i].y,player.level-1,max)
+					ret:=<-finished
+					if ret== 1{
+						break
+					}
+					ithread--
+					if ithread<0{
+						log.Println("Error!, ithread<0")
+					}
 				}
-				if value>max{
-					maxsts=make([]StepInfo,0,MAX_STEP)
-					maxsts=append(maxsts,allst[i])
-					max=value
-				}else if value==max{
-					maxsts=append(maxsts,allst[i])
+			}else{
+				for{
+					ret:=<-finished
+					if ret==1{
+						break
+					}
 				}
-				player.UnapplyStep(allst[i])
-//				log.Printf("%d,%d value:%d\n",allst[i].x,allst[i].y,max)
+				break
 			}
 		}
-	}
+
 	nsts:=len(maxsts)
 	if debug{
 		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level,max)
 	}
+	retindex:=rnd.Int()%nsts
+	player.Clone(maxplayers[retindex])
 	if nsts>0{
-		return &maxsts[player.rnd.Int()%nsts]
+		return &maxsts[retindex]
 	}
 	return nil
 }
