@@ -1042,17 +1042,19 @@ func SearchPara(player *AIPlayer,step StepInfo,finished chan int, max *int, maxs
 		finished<-1
 	}else{
 		var value int
-
 		if over==player.human{
 			value= -WIN
 		}else{
 			value=player.GetMin(allst[i].x,allst[i].y,player.level-1,max)
 		}
+		maxvlock.RLock()
 		if value>max{
+			maxvlock.RUnlock()
 			maxsts=make([]StepInfo,0,MAX_STEP)
 			maxsts=append(maxsts,allst[i])
 			max=value
 		}else if value==max{
+
 			maxsts=append(maxsts,allst[i])
 		}
 		player.UnapplyStep(allst[i])
@@ -1084,32 +1086,34 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 					go SearchPara(np,allst[i],finished,&max,&maxsts,&maxplayers)
 				}else{
 					ret:=<-finished
-					if ret== 1{
+					ithread--
+					if ret== 1{	// WIN
+						for ithread>0{
+							ret=<-finished
+							ithread--
+						}
 						break
 					}
-					ithread--
 					if ithread<0{
 						log.Println("Error!, ithread<0")
 					}
 				}
 			}else{
-				for{
-					ret:=<-finished
-					if ret==1{
-						break
-					}
+				for ithread>0{
+					<-finished
+					ithread--
 				}
 				break
 			}
 		}
-
+	}
 	nsts:=len(maxsts)
 	if debug{
 		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level,max)
 	}
-	retindex:=rnd.Int()%nsts
-	player.Clone(maxplayers[retindex])
 	if nsts>0{
+		retindex:=rnd.Int()%nsts
+		player.Clone(maxplayers[retindex])
 		return &maxsts[retindex]
 	}
 	return nil
