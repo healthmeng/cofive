@@ -143,8 +143,11 @@ func main() {
 		fmt.Printf("player1:%d, player2:%d. Total %d times, black win %d, white win %d, Drawn %d\n",l1,l2, color, bw, ww, dw)
 		return
 	}
+	fmt.Println("AI level:")
+	var al int
+	fmt.Scanln(&al)
 	fmt.Println("Start:")
-	player, err := ai.InitPlayer(color,2 , true)
+	player, err := ai.InitPlayer(color,al, true)
 	//player, err := ai.InitPlayer(color, 2, true)
 	if err != nil {
 		fmt.Println("Init server error:", err)

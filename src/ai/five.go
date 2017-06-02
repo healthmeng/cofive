@@ -1036,8 +1036,15 @@ func SearchPara(player *AIPlayer,step StepInfo,finished chan int, max *int, maxs
 	player.ApplyStep(step)
 	over:=player.IsOver()
 	result:=0
-	if over== player.robot || over== -1{
+	if over== player.robot{// -1(drawn) is impossible, because nstep==1 will not enter SearchPara
 		player.UnapplyStep(step)
+		maxvlock.Lock()
+		*max=WIN
+		*maxsts=make([]StepInfo,1,MAX_STEP)
+		(*maxsts)[0]=step
+		*maxplayers=make([]*AIPlayer,1,MAX_STEP)
+		(*maxplayers)[0]=player
+		maxvlock.Unlock()
 		finished<-1
 	}else{
 		var value int
@@ -1077,6 +1084,8 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	maxplayers:=make([]*AIPlayer,0,MAX_STEP)
 	if nstep<1{
 		return nil
+	}else if nstep==1{
+		return &allst[0]
 	}else{
 		finished:=make(chan int,4)
 		i:=0
