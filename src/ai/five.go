@@ -1087,7 +1087,7 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	}else if nstep==1{
 		return &allst[0]
 	}else{
-		finished:=make(chan int,4)
+		finished:=make(chan int,ncpus)
 		i:=0
 		ithread:=0
 		for{
