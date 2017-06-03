@@ -92,7 +92,7 @@ func init(){
 	if strings.ToLower(runtime.GOOS)=="windows"{
 		IsWin=true
 	}
-	ncpus=runtime.NumCPU()
+	if ncpus=runtime.NumCPU()
 	rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
@@ -379,7 +379,7 @@ func (part *Conti)ParseType()int{
 					ret=CCCCCC
 			} else{
 				max:=0
-				if maxcont!=part.spmid{	// right part
+				if maxcont!=part.spmid{	// right part is longer
 					if maxcont+part.rightsp>4{
 						max=maxcont
 					}else if part.spmid+part.leftsp>4{
@@ -532,34 +532,34 @@ wout:
 		wval+=wtable[k]*v
 	}
 
-//	if nextmove==WHITE{
+	if nextmove==WHITE{
 		if bd3==1 && b4==1 && w4<1{	// 4-3
-			bval+=10000
+			bval+=50000
 		}
 		if !player.forbid{
 			if b4>1 && w4<1{	//4-4
-				bval+=10000
+				bval+=40000
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
-				bval+=2000
+				bval+=5000
 			}
-		}/*else{
+		}else{
 			if b4>1 && w4<1{	//4-4
 				bval= -WIN
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval=-WIN
 			}
-		}*/
-//	}else if nextmove==BLACK{
+		}
+	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
-			wval+=10000
+			wval+=50000
 		}
 		if w4>1 && b4<1{
-			wval+=10000
+			wval+=50000
 		}
 		if wd3>1 && (b4<1 && bd3<1){
-			wval+=2000
+			wval+=5000
 		}
-//	}
+	}
 
 	return bval,wval
 }
@@ -1053,22 +1053,28 @@ func SearchPara(player *AIPlayer,step StepInfo,finished chan int, max *int, maxs
 		}else{
 			value=player.GetMin(step.x,step.y,player.level-1,max)
 		}
-		maxvlock.Lock()
-		if value>*max{
-			*maxsts=make([]StepInfo,1,MAX_STEP)
-			(*maxsts)[0]=step
-			*maxplayers=make([]*AIPlayer,1,MAX_STEP)
-			(*maxplayers)[0]=player
-			*max=value
-			result=2 // new max
-		}else if value==*max{
-			*maxsts=append(*maxsts,step)
-			*maxplayers=append(*maxplayers,player)
-			if result==0{
-				result=3	// same as old max
+		maxvlock.RLock()
+		if value>=*max{
+			maxvlock.RUnlock()
+			maxvlock.Lock()
+			if value>*max{
+				*maxsts=make([]StepInfo,1,MAX_STEP)
+				(*maxsts)[0]=step
+				*maxplayers=make([]*AIPlayer,1,MAX_STEP)
+				(*maxplayers)[0]=player
+				*max=value
+				result=2 // new max
+			} else if value==*max{
+				*maxsts=append(*maxsts,step)
+				*maxplayers=append(*maxplayers,player)
+				if result==0{
+					result=3	// same as old max
+				}
 			}
+			maxvlock.Unlock()
+		}else{
+			maxvlock.RUnlock()
 		}
-		maxvlock.Unlock()
 		player.UnapplyStep(step)
 		finished<-result
 //		log.Printf("%d,%d value:%d\n",allst[i].x,allst[i].y,max)
