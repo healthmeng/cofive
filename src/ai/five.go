@@ -86,14 +86,13 @@ var IsWin bool =false
 var ncpus int=0
 var maxvlock sync.RWMutex
 var steplock sync.Mutex
-var rnd *rand.Rand
+//var rnd *rand.Rand
 
 func init(){
 	if strings.ToLower(runtime.GOOS)=="windows"{
 		IsWin=true
 	}
 	ncpus=runtime.NumCPU()
-	rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 type StepInfo struct{
@@ -542,13 +541,13 @@ wout:
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval+=5000
 			}
-		}else{
+		}/*else{
 			if b4>1 && w4<1{	//4-4
 				bval= -WIN
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval=-WIN
 			}
-		}
+		}*/
 	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
 			wval+=25000
@@ -874,6 +873,7 @@ func (player* AIPlayer)DirectAlgo()*StepInfo{
 	}
 	nchoose:=len(results)
 	if nchoose>0{
+		rnd:=rand.New(rand.NewSource(time.Now().UnixNano()))
 		return &results[rnd.Int()%nchoose]
 	}
 	return nil
@@ -1133,6 +1133,7 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level,max)
 	}
 	if nsts>0{
+		rnd:=rand.New(rand.NewSource(time.Now().UnixNano()))
 		retindex:=rnd.Int()%nsts
 		player.Clone(maxplayers[retindex])
 		return &maxsts[retindex]
