@@ -54,7 +54,7 @@ var BScoreTB [15]int =[...]int{
 	2150,	// CCC_CC
 	2020,	// CC_CCC
 	2000,	// NCC_CCCN
-	10000,	// CCCC
+	15000,	// CCCC
 	2000,	// NCCCC,
 	800,	// CCC
 	150,	// NCCC
@@ -92,7 +92,7 @@ func init(){
 	if strings.ToLower(runtime.GOOS)=="windows"{
 		IsWin=true
 	}
-	if ncpus=runtime.NumCPU()
+	ncpus=runtime.NumCPU()
 	rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
@@ -534,11 +534,11 @@ wout:
 
 	if nextmove==WHITE{
 		if bd3==1 && b4==1 && w4<1{	// 4-3
-			bval+=50000
+			bval+=25000
 		}
 		if !player.forbid{
 			if b4>1 && w4<1{	//4-4
-				bval+=40000
+				bval+=25000
 			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
 				bval+=5000
 			}
@@ -551,10 +551,10 @@ wout:
 		}
 	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
-			wval+=50000
+			wval+=25000
 		}
 		if w4>1 && b4<1{
-			wval+=50000
+			wval+=25000
 		}
 		if wd3>1 && (b4<1 && bd3<1){
 			wval+=5000
