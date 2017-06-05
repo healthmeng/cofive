@@ -51,13 +51,13 @@ var BScoreTB [15]int =[...]int{
 	WIN,	// CCCCC
 	WIN,	// CCCCCC
 	10000,	//CCCC_C
-	2150,	// CCC_CC
-	2020,	// CC_CCC
-	2000,	// NCC_CCCN
-	15000,	// CCCC
-	2000,	// NCCCC,
-	800,	// CCC
-	150,	// NCCC
+	1150,	// CCC_CC
+	1020,	// CC_CCC
+	1000,	// NCC_CCCN
+	10000,	// CCCC
+	1000,	// NCCCC
+	1000,	// CCC
+	200,	// NCCC
 	200,	// CC 
 	20,		// NCC
 	20,		// C
@@ -68,14 +68,14 @@ var FScoreTB [15] int=[...]int{
 	0,	// NONE
 	WIN,	// CCCCC
 	WIN,	// CCCCCC
-	40000,	// CCCC_C
-	15150,	// CCC_CC
-	15020,	// CC_CCC
-	15000,	// NCC_CCCN
-	40000,	// CCCC
-	15000,	// NCCCC
-	1500,	// CCC
-	150,	// NCCC
+	50000,	// CCCC_C
+	50150,	// CCC_CC
+	50020,	// CC_CCC
+	50000,	// NCC_CCCN
+	50000,	// CCCC
+	50000,	// NCCCC
+	2000,	// CCC
+	200,	// NCCC
 	200,	// CC 
 	20,		// NCC
 	20,		// C
@@ -531,29 +531,21 @@ wout:
 		wval+=wtable[k]*v
 	}
 
-	if nextmove==WHITE{
-		if bd3==1 && b4==1 && w4<1{	// 4-3
-			bval+=25000
+	if nextmove==WHITE{// forbid is excluded in IsOver()
+		if bd3>=1 && b4>=1 && w4<1{	// 4-3
+			bval+=10000
 		}
-		if !player.forbid{
-			if b4>1 && w4<1{	//4-4
-				bval+=25000
-			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
-				bval+=5000
-			}
-		}/*else{
-			if b4>1 && w4<1{	//4-4
-				bval= -WIN
-			}else if bd3 >1 && (w4<1 && wd3<1){	// 3-3
-				bval=-WIN
-			}
-		}*/
+		if b4>1 && w4<1{	// 4 occurred in 2 places
+			bval+=10000
+		}else if bd3 >1 && (w4<1 && wd3<1){	// double 3
+			bval+=5000
+		}
 	}else if nextmove==BLACK{
 		if wd3>=1 && w4>=1 && b4<1{
-			wval+=25000
+			wval+=10000
 		}
 		if w4>1 && b4<1{
-			wval+=25000
+			wval+=10000
 		}
 		if wd3>1 && (b4<1 && bd3<1){
 			wval+=5000
@@ -895,8 +887,8 @@ func (player* AIPlayer)Draw(hl bool){
 			wstr:=" o"
 			if hl && j==x && i==y{
 				if IsWin{
-					bstr="X"
-					wstr="O"
+					bstr=" X"
+					wstr=" O"
 				}else{
 					bstr=" \033[7mx\033[0m"
 					wstr=" \033[7mo\033[0m"
