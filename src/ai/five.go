@@ -300,15 +300,20 @@ func (player* AIPlayer)UnsetStep(x,y int){
 }
 
 func (player* AIPlayer)GetStep(debug bool)(int,int){
-	var st *StepInfo
-	if player.level==0{
-		st=player.DirectAlgo()
-	}else{
-		st=player.MinMaxAlgo(debug)
+	var st *StepInfo=nil
+	if player.curstep<3{
+		st=player.TryFormula()
 	}
 	if st==nil{
-	//	log.Println("Drawn!")
-		return -1,-1
+		if player.level==0{
+			st=player.DirectAlgo()
+		}else{
+			st=player.MinMaxAlgo(debug)
+		}
+		if st==nil{
+		//	log.Println("Drawn!")
+			return -1,-1
+		}
 	}
 	player.ApplyStep(*st)
 //	log.Printf("x,y: %d-%d, val: %d...%d\n",st.x,st.y,player.bvalues[player.curstep-1],player.wvalues[player.curstep-1])
@@ -1024,54 +1029,56 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
 	return beta
 }
 
-func SearchPara(player *AIPlayer,step StepInfo,finished chan int, max *int, maxsts *[]StepInfo, maxplayers *[]*AIPlayer){
-	player.ApplyStep(step)
-	over:=player.IsOver()
+func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, maxsts *[]StepInfo, maxplayers *[]*AIPlayer){
+	nstep:=len(steps)
 	result:=0
-	if over== player.robot{// -1(drawn) is impossible, because nstep==1 will not enter SearchPara
-		player.UnapplyStep(step)
-		maxvlock.Lock()
-		*max=WIN
-		*maxsts=make([]StepInfo,1,MAX_STEP)
-		(*maxsts)[0]=step
-		*maxplayers=make([]*AIPlayer,1,MAX_STEP)
-		(*maxplayers)[0]=player
-		maxvlock.Unlock()
-		finished<-1
-	}else{
-		var value int
-		if over==player.human{
-			value= -WIN
-		}else{
-			value=player.GetMin(step.x,step.y,player.level-1,max)
-		}
-		maxvlock.RLock()
-		if value>=*max{
-			maxvlock.RUnlock()
+	for i:=0;i<nstep;i++{
+		player.ApplyStep(steps[i])
+		over:=player.IsOver()
+		if over== player.robot{// -1(drawn) is impossible, because nstep==1 will not enter SearchPara
+			player.UnapplyStep(steps[i])
 			maxvlock.Lock()
-			if value>*max{
-				*maxsts=make([]StepInfo,1,MAX_STEP)
-				(*maxsts)[0]=step
-				*maxplayers=make([]*AIPlayer,1,MAX_STEP)
-				(*maxplayers)[0]=player
-				*max=value
-				result=2 // new max
-			} else if value==*max{
-				*maxsts=append(*maxsts,step)
-				*maxplayers=append(*maxplayers,player)
-				if result==0{
-					result=3	// same as old max
-				}
-			}
+			*max=WIN
+			*maxsts=make([]StepInfo,1,MAX_STEP)
+			(*maxsts)[0]=steps[i]
+			*maxplayers=make([]*AIPlayer,1,MAX_STEP)
+			(*maxplayers)[0]=player
 			maxvlock.Unlock()
+			finished<-1
+			return
 		}else{
-			maxvlock.RUnlock()
+			var value int
+			if over==player.human{
+				value= -WIN
+			}else{
+				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max)
+			}
+			maxvlock.RLock()
+			if value>=*max{
+				maxvlock.RUnlock()
+				maxvlock.Lock()
+				if value>*max{
+					*maxsts=make([]StepInfo,1,MAX_STEP)
+					(*maxsts)[0]=steps[i]
+					*maxplayers=make([]*AIPlayer,1,MAX_STEP)
+					(*maxplayers)[0]=player
+					*max=value
+					result=2 // new max
+				} else if value==*max{
+					*maxsts=append(*maxsts,steps[i])
+					*maxplayers=append(*maxplayers,player)
+					if result==0{
+						result=3	// same as old max
+					}
+				}
+				maxvlock.Unlock()
+			}else{
+				maxvlock.RUnlock()
+			}
+			player.UnapplyStep(steps[i])
 		}
-		player.UnapplyStep(step)
-		finished<-result
-//		log.Printf("%d,%d value:%d\n",allst[i].x,allst[i].y,max)
 	}
-
+	finished<-result
 }
 
 func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
@@ -1087,8 +1094,31 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	}else{
 		finished:=make(chan int,ncpus)
 		i:=0
-		ithread:=0
-		for{
+		nslide:=nstep/ncpus
+		if nslide==0{
+			for i=0;i<nstep;i++{
+				np,_:=InitPlayer(player.robot,player.level,player.forbid)
+				np.Clone(player)
+				go SearchPara(np,allst[i:i+1],finished,&max,&maxsts,&maxplayers)
+			}
+			for i=0;i<nstep;i++{
+				<-finished
+			}
+		}else{
+			for i=0;i<ncpus;i++{
+				np,_:=InitPlayer(player.robot,player.level,player.forbid)
+				np.Clone(player)
+				end:=(i+1)*nslide
+				if i==ncpus-1{
+					end=nstep
+				}
+				go SearchPara(np,allst[i*nslide:end],finished,&max,&maxsts,&maxplayers)
+			}
+			for i=0;i<ncpus;i++{
+				<-finished
+			}
+		}
+		/*
 			if i<nstep{
 				if ithread<ncpus{
 					// clone AIPlayer
@@ -1117,9 +1147,11 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 					ithread--
 				}
 				break
+			}*/
 			}
+/*		}else{
 		}
-	}
+	}*/
 	nsts:=len(maxsts)
 	if debug{
 		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level,max)
