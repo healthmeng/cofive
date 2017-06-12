@@ -187,13 +187,35 @@ func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 
 func (player* AIPlayer) IsOver() int{
 // 1 black, 2 white, 0 not over yet
-	if player.curstep<5{
+	if player.curstep<8{
 		return 0
 	}
-	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
-	if bw==BLACK && player.CheckForbid(x,y)!=0{
-		return WHITE
+
+	if player.curstep>=MAX_STEP{
+		log.Println("Drawned")
+		return -1
 	}
+
+	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
+
+	if bw==BLACK{
+		if player.bshapes[player.curstep-1][CCCCC]>0{	// the rule: when get five, ignore forbid
+			return BLACK
+		}else{
+			if !player.forbid{
+				if player.bshapes[player.curstep-1][CCCCCC]>0{
+					return BLACK
+				}
+			}else  if  player.CheckForbid(x,y)!=0{
+				return WHITE
+			}
+		}
+	}else{
+		if player.wshapes[player.curstep-1][CCCCC]>0 || player.wshapes[player.curstep-1][CCCCCC]>0{
+			return WHITE
+		}
+	}
+/*
 	n:=0
 	for i:=x-1;i>=0 && player.frame[i][y]==bw && n<4 ; i--{
 		n++;
@@ -237,11 +259,7 @@ func (player* AIPlayer) IsOver() int{
 	if n>=4{
 		return bw
 	}
-
-	if player.curstep>=MAX_STEP{
-		log.Println("Drawned")
-		return -1
-	}
+*/
 
 	return 0
 }
@@ -442,19 +460,6 @@ func (part *Conti)AddTail(cont int) int {
 	}
 	return ret
 }
-
-/*
-func (part *Conti)CountScore(nextmove int) int{
-// nextmove: 1-> black; 2->white; 0->ignore
-	score:=0
-	contype:=part.ParseType()
-	if nextmove==part.bw{
-		score=FScoreTB[contype]
-	}else{
-		score=BScoreTB[contype]
-	}
-	return score
-}*/
 
 func (player* AIPlayer)GetCurValues()(int,int){
 	if player.curstep<1{
