@@ -518,6 +518,9 @@ bout:
 		}
 		bval+=btable[k]*v
 	}
+	if btable[NCCC]>1{
+		bval+=500*btable[NCCC]
+	}
 
 wout:
 	for k,v:= range player.wshapes[player.curstep-1]{
@@ -541,6 +544,10 @@ wout:
 		wval+=wtable[k]*v
 	}
 
+	if wtable[NCCC]>1{
+		wval+=wtable[NCCC]*500
+	}
+
 	if nextmove==WHITE{// forbid is excluded in IsOver()
 		if bd3>=1 && b4>=1 && w4<1{	// 4-3
 			bval+=10000
@@ -561,7 +568,6 @@ wout:
 			wval+=5000
 		}
 	}
-
 	return bval,wval
 }
 
@@ -970,7 +976,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 				alpha=value
 			}
 			player.UnapplyStep(allst[i])
-			if alpha>=beta{
+			if beta<= -WIN || alpha>=beta{
 				break
 			}
 		}
@@ -1019,13 +1025,13 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
 			player.UnapplyStep(allst[i])
 			if level==player.level-1{
 				maxvlock.RLock()
-				if beta<*alpha {
+				if *alpha>=WIN || beta<*alpha {
 					maxvlock.RUnlock()
 					break
 				}
 				maxvlock.RUnlock()
 			}else{
-				if beta<=*alpha{
+				if *alpha>=WIN || beta<=*alpha{
 					break
 				}
 			}
