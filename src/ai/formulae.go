@@ -21,7 +21,28 @@ func (player* AIPlayer)getWhiteFormula(x,y int)*StepInfo{
 }
 
 func (player* AIPlayer)getThirdStep() *StepInfo{
-	return nil
+    sts := make([]StepInfo, 0, MAX_STEP)
+	x:= player.steps[0].x
+	y:= player.steps[0].y
+	var orders [5]int=[5]int{-1,1,0,-2,2}
+	for i:= 0 ;i<5;i++  {
+		tmpx:=orders[i]+x
+	    if tmpx< 0 || tmpx >= 15 {
+	        continue
+	    }
+	    for j := 0;j<5; j++ {
+			tmpy:=orders[j]+y
+	        if tmpy < 0 || tmpy >= 15 {
+	            continue
+	        }
+	        if player.frame[tmpx][tmpy] == 0 {
+				sts = append(sts, StepInfo{tmpx, tmpy, 1})
+	        }
+	    }
+	}
+	nst:=len(sts)
+	rnd:=rand.New(rand.NewSource(time.Now().UnixNano()))
+	return &sts[rnd.Int()%nst]
 }
 
 func (player* AIPlayer)IsFormula() bool{

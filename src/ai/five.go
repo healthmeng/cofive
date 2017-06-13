@@ -56,11 +56,11 @@ var BScoreTB [15]int =[...]int{
 	1000,	// NCC_CCCN
 	10000,	// CCCC
 	1000,	// NCCCC
-	1000,	// CCC
-	200,	// NCCC
+	900,	// CCC
+	400,	// NCCC
 	200,	// CC 
 	20,		// NCC
-	20,		// C
+	0,		// C
 	0,		// NC
 }
 
@@ -75,10 +75,10 @@ var FScoreTB [15] int=[...]int{
 	50000,	// CCCC
 	50000,	// NCCCC
 	2000,	// CCC
-	200,	// NCCC
-	200,	// CC 
-	20,		// NCC
-	20,		// C
+	400,	// NCCC
+	300,	// CC 
+	30,		// NCC
+	0,		// C
 	0,		// NC
 }
 
@@ -518,10 +518,6 @@ bout:
 		}
 		bval+=btable[k]*v
 	}
-	if btable[NCCC]>1{
-		bval+=500*btable[NCCC]
-	}
-
 wout:
 	for k,v:= range player.wshapes[player.curstep-1]{
 		switch k{
@@ -543,11 +539,6 @@ wout:
 		}
 		wval+=wtable[k]*v
 	}
-
-	if wtable[NCCC]>1{
-		wval+=wtable[NCCC]*500
-	}
-
 	if nextmove==WHITE{// forbid is excluded in IsOver()
 		if bd3>=1 && b4>=1 && w4<1{	// 4-3
 			bval+=10000
@@ -797,7 +788,6 @@ func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int){
 	return player.CountShape(parts)
 }
 
-
 type PT struct {
     x, y int
 }
@@ -840,7 +830,6 @@ func (player *AIPlayer) getallstep(side int) []StepInfo {
     }
     return sts
 }
-
 
 func (player* AIPlayer)UnapplyStep(st StepInfo){
 	player.frame[st.x][st.y]=0
@@ -1013,7 +1002,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
 					return w-b
 				}
 			}else if over==player.robot{
-				//log.Println("Error,impossible for black win in white turn")
+				//log.Println("Error,impossible: black win in white turn")
 				value=WIN	// forbidden
 			}else{
 				value=player.GetMax(allst[i].x,allst[i].y,level-1,beta)
@@ -1031,7 +1020,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
 				}
 				maxvlock.RUnlock()
 			}else{
-				if *alpha>=WIN || beta<=*alpha{
+				if *alpha>=WIN || beta<=*alpha{ // need not lock
 					break
 				}
 			}
@@ -1065,7 +1054,7 @@ func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, ma
 				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max)
 			}
 			maxvlock.RLock()
-			if value>=*max{
+			if *max<WIN && value>=*max{
 				maxvlock.RUnlock()
 				maxvlock.Lock()
 				if value>*max{
