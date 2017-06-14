@@ -57,8 +57,8 @@ var BScoreTB [15]int =[...]int{
 	10000,	// CCCC
 	1000,	// NCCCC
 	900,	// CCC
-	400,	// NCCC
-	200,	// CC 
+	300,	// NCCC
+	300,	// CC 
 	20,		// NCC
 	0,		// C
 	0,		// NC
@@ -75,7 +75,7 @@ var FScoreTB [15] int=[...]int{
 	50000,	// CCCC
 	50000,	// NCCCC
 	2000,	// CCC
-	400,	// NCCC
+	300,	// NCCC
 	300,	// CC 
 	30,		// NCC
 	0,		// C
@@ -98,6 +98,7 @@ func init(){
 type StepInfo struct{
 	x,y int
 	bw int
+	forbid bool
 }
 
 type Conti struct{
@@ -196,9 +197,9 @@ func (player* AIPlayer) IsOver() int{
 		return -1
 	}
 
-	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
+//	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
 
-	if bw==BLACK{
+	if player.steps[player.curstep-1].bw==BLACK{
 		if player.bshapes[player.curstep-1][CCCCC]>0{	// the rule: when get five, ignore forbid
 			return BLACK
 		}else{
@@ -206,7 +207,7 @@ func (player* AIPlayer) IsOver() int{
 				if player.bshapes[player.curstep-1][CCCCCC]>0{
 					return BLACK
 				}
-			}else  if  player.CheckForbid(x,y)!=0{
+			}else  if  player.steps[player.curstep-1].forbid==true{
 				return WHITE
 			}
 		}
@@ -265,21 +266,22 @@ func (player* AIPlayer) IsOver() int{
 }
 
 func (player* AIPlayer)SetStep(x int,y int){
-	player.ApplyStep(StepInfo{x,y,player.curstep%2+1})
+	player.ApplyStep(StepInfo{x,y,player.curstep%2+1,false})
 }
 
 func (player* AIPlayer)ApplyStep(st StepInfo){
 	var bshapes,wshapes map[int] int
 	if player.curstep>0{
-		bshapes,wshapes=player.CalShape(st.x,st.y)
+		bshapes,wshapes,_=player.CalShape(st.x,st.y)
 	}
 	curb:=make(map[int]int)
 	curw:=make(map[int]int)
 	player.frame[st.x][st.y]=st.bw
 	player.steps[player.curstep]=st
 	player.curstep++
-	nbshapes,nwshapes:=player.CalShape(st.x,st.y)
+	nbshapes,nwshapes,forbid:=player.CalShape(st.x,st.y)
 
+	player.steps[player.curstep-1].forbid=forbid
 	if player.curstep>1{
 	// remove old
 		for i:=1;i<END;i++{
@@ -716,7 +718,7 @@ func (player* AIPlayer)hasforbid(parts []Conti) int{
 	}
 	return 0
 }
-
+/*
 func (player* AIPlayer)CheckForbid(x,y int) int{
 	if player.forbid{
 		lines,places:=player.CrossLines(x,y)
@@ -729,7 +731,7 @@ func (player* AIPlayer)CheckForbid(x,y int) int{
 
 	return 0
 }
-
+*/
 func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	hor:=make([]int,0,15)
 	ver:=make([]int,0,15)
@@ -774,7 +776,7 @@ func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	return lines,places
 }
 
-func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int){
+func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int,bool){
 	lines,places:=player.CrossLines(x,y)
 
 	parts:=make([]Conti,0,MAX_STEP)
@@ -782,10 +784,16 @@ func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int){
 		parts=append(parts,player.CountLineParts(lines[i],places[i])...)
 	}
 	if len(parts)==0{
-		return nil,nil
+		return nil,nil,false
 	}
 
-	return player.CountShape(parts)
+	hasforbid:=false
+	if player.forbid && player.hasforbid(parts)!=0{
+		hasforbid=true
+	}
+
+	bs,ws:=player.CountShape(parts)
+	return bs,ws,hasforbid
 }
 
 type PT struct {
@@ -798,7 +806,7 @@ func (player *AIPlayer) getallstep(side int) []StepInfo {
         if side != BLACK {
             log.Println("Error, first step should be black turn")
         }
-        sts = append(sts, StepInfo{7, 7, side})
+        sts = append(sts, StepInfo{7, 7, side,false})
     } else {
         stmap := make(map[PT]bool)
 		var orders [5]int=[5]int{-1,1,0,-2,2}
@@ -821,7 +829,7 @@ func (player *AIPlayer) getallstep(side int) []StepInfo {
                         pt := PT{tmpx, tmpy}
                         if !stmap[pt] {
                             stmap[pt] = true
-                            sts = append(sts, StepInfo{tmpx, tmpy, side})
+                            sts = append(sts, StepInfo{tmpx, tmpy, side,false})
                         }
                     }
                 }

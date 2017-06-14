@@ -11,7 +11,7 @@ func (player* AIPlayer)getWhiteFormula(x,y int)*StepInfo{
 	for i:=-1;i<=1;i++{
 		for j:=-1;j<=1;j++{
 			if player.frame[x+i][y+j]==0{
-				sts=append(sts,StepInfo{x+i,y+j,2})
+				sts=append(sts,StepInfo{x+i,y+j,2,false})
 			}
 		}
 	}
@@ -36,7 +36,7 @@ func (player* AIPlayer)getThirdStep() *StepInfo{
 	            continue
 	        }
 	        if player.frame[tmpx][tmpy] == 0 {
-				sts = append(sts, StepInfo{tmpx, tmpy, 1})
+				sts = append(sts, StepInfo{tmpx, tmpy, 1,false})
 	        }
 	    }
 	}
@@ -58,7 +58,7 @@ func (player* AIPlayer)TryFormula() *StepInfo{
 	nst:=player.curstep
 	switch nst{
 	case 0:
-		return &StepInfo{x:7,y:7,bw:1}
+		return &StepInfo{x:7,y:7,bw:1,forbid:false}
 	case 1:
 		return player.getWhiteFormula(player.steps[0].x,player.steps[0].y)
 	case 2:
