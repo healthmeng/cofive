@@ -564,18 +564,48 @@ wout:
 	return bval,wval
 }
 
-func (player* AIPlayer) CountShape(parts []Conti)(map [int]int,map[int]int){
+func (player* AIPlayer) CountShape(parts []Conti)(map [int]int,map[int]int,int/* forbid type */){
 	bs:=make(map[int]int)
 	ws:=make(map[int]int)
-//	nextmove:=player.curstep%2+1
+
+	nCCC:=0
+	nCCCC:=0
+	ftype:=0
 	for  _,part:=range parts{
+		tp:=part.ParseType()
 		if part.bw==BLACK{
 			bs[part.ParseType()]++
+			if player.forbid && ftype==0 && part.isnew{
+				switch tp{
+					case CCC:
+						nCCC++
+						if nCCC>=2{
+							ftype=CCC
+						}
+					case CCCC:
+						fallthrough
+					case CCCC_C:
+						fallthrough
+					case CCC_CC:
+						fallthrough
+					case CC_CCC:
+						fallthrough
+					case NCC_CCCN:
+						fallthrough
+					case NCCCC:
+						nCCCC++
+						if nCCCC>=2{
+							ftype=CCCC
+						}
+					case CCCCCC:
+						ftype=CCCCCC
+					}
+			}
 		}else{
 			ws[part.ParseType()]++
 		}
 	}
-	return bs,ws
+	return bs,ws,ftype
 }
 
 func (player* AIPlayer)CountLineParts(line[]int,newone int)[]Conti{
@@ -679,8 +709,7 @@ func (player* AIPlayer)EvalLine(line[]int, place int)(int,int){
 		return 0,0
 	}
 	return player.CountScore(parts)
-}*/
-
+}
 func (player* AIPlayer)hasforbid(parts []Conti) int{
 	if player.forbid==false || len(parts)==0{
 			return 0
@@ -718,7 +747,7 @@ func (player* AIPlayer)hasforbid(parts []Conti) int{
 	}
 	return 0
 }
-/*
+
 func (player* AIPlayer)CheckForbid(x,y int) int{
 	if player.forbid{
 		lines,places:=player.CrossLines(x,y)
@@ -788,11 +817,14 @@ func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int,bool){
 	}
 
 	hasforbid:=false
-	if player.forbid && player.hasforbid(parts)!=0{
+/*	if player.forbid && player.hasforbid(parts)!=0{
 		hasforbid=true
 	}
-
-	bs,ws:=player.CountShape(parts)
+*/
+	bs,ws,hf:=player.CountShape(parts)
+	if hf!=0{
+		hasforbid=true
+	}
 	return bs,ws,hasforbid
 }
 
