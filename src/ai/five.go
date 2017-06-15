@@ -165,7 +165,7 @@ func (player* AIPlayer)DebugStep(){
 		return
 	}
 	b,w:=player.GetCurValues()
-	fmt.Printf("step %d,%d  value %d-%d\n",player.steps[n].x,player.steps[n].y,b,w)
+	fmt.Printf("step %d: %d,%d  value: %d-%d\n",player.curstep,player.steps[n].x,player.steps[n].y,b,w)
 }
 
 func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
@@ -296,16 +296,23 @@ func (player* AIPlayer)ApplyStep(st StepInfo){
 			if wshapes[i]!=0{
 				curw[i]=player.wshapes[player.curstep-2][i]-wshapes[i]
 			}
-		}
-	}
 
-// add new
-	for i:=1;i<END;i++{
-		if nbshapes[i]!=0{
-			curb[i]+=nbshapes[i]
+			if nbshapes[i]!=0{
+				curb[i]+=nbshapes[i]
+			}
+			if nwshapes[i]!=0{
+				curw[i]+=nwshapes[i]
+			}
 		}
-		if nwshapes[i]!=0{
-			curw[i]+=nwshapes[i]
+	}else{
+// add new
+		for i:=1;i<END;i++{
+			if nbshapes[i]!=0{
+				curb[i]+=nbshapes[i]
+			}
+			if nwshapes[i]!=0{
+				curw[i]+=nwshapes[i]
+			}
 		}
 	}
 	player.bshapes[player.curstep-1]=curb
@@ -318,6 +325,7 @@ func (player* AIPlayer)UnsetStep(x,y int){
 		player.curstep--
 	}
 }
+
 
 func (player* AIPlayer)GetStep(debug bool)(int,int){
 	var st *StepInfo=nil
@@ -495,64 +503,68 @@ func (player* AIPlayer)GetCurValues()(int,int){
 	bnc3:=0
 bout:
 	for k,v:= range player.bshapes[player.curstep-1]{
-		switch k{
-		case CCCCC :
-			if v>0{
+		if v>0{
+			switch k{
+			case CCCCC :
 				bval=WIN
 				break bout
-			}
-		case CCCCCC :
-			if v>0{
+			case CCCCCC :
 				if player.forbid{
 					bval= -WIN
 				}else{
 					bval=WIN
 				}
 				break bout
+			case CCC:
+				bd3=v
+			case NCCCC :
+				fallthrough
+			case CCCC_C:
+				fallthrough
+			case CCCC:
+				b4+=v
+			case NCCC:
+				bnc3=v
 			}
-		case CCC:
-			bd3=v
-		case NCCCC :
-			fallthrough
-		case CCCC_C:
-			fallthrough
-		case CCCC:
-			b4+=v
-		case NCCC:
-			bnc3=v
-		}
-		bval+=btable[k]*v
-		if bnc3>1{
-			bval+=(bnc3-1)*300
+			if btable[k]>0{
+				bval+=btable[k]*v
+			}
 		}
 	}
+	if bnc3>1{
+		bval+=(bnc3-1)*300
+	}
+
 	wnc3:=0
 wout:
 	for k,v:= range player.wshapes[player.curstep-1]{
-		switch k{
-		case CCCCC :
-			fallthrough
-		case CCCCCC :
-			if v>0{
+		if v>0{
+			switch k{
+			case CCCCC :
+				fallthrough
+			case CCCCCC :
 				wval=WIN
 				break wout
+			case CCC:
+				wd3=v
+			case NCCCC :
+				fallthrough
+			case CCCC_C :
+				fallthrough
+			case CCCC :
+				w4+=v
+			case NCCC:
+				wnc3=v
 			}
-		case CCC:
-			wd3=v
-		case NCCCC :
-			fallthrough
-		case CCCC_C :
-			fallthrough
-		case CCCC :
-			w4+=v
-		case NCCC:
-			wnc3=v
-		}
-		wval+=wtable[k]*v
-		if wnc3>1{
-			wval+=(wnc3-1)*300
+			if wtable[k]>0{
+				wval+=wtable[k]*v
+			}
 		}
 	}
+	if wnc3>1{
+		wval+=(wnc3-1)*300
+	}
+
 	if nextmove==WHITE{// forbid is excluded in IsOver()
 		if bd3>=1 && b4>=1 && w4<1{	// 4-3
 			bval+=10000
@@ -883,6 +895,16 @@ func (player *AIPlayer) getallstep(side int) []StepInfo {
     return sts
 }
 
+func (player* AIPlayer)Retreat() bool{
+	if player.curstep<2{
+		return false
+	}else{
+		player.UnapplyStep(player.steps[player.curstep-1])
+		player.UnapplyStep(player.steps[player.curstep-1])
+		return true
+	}
+}
+
 func (player* AIPlayer)UnapplyStep(st StepInfo){
 	player.frame[st.x][st.y]=0
 	if player.curstep>0{
@@ -1134,6 +1156,7 @@ func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, ma
 }
 
 func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
+	tmstart:=time.Now()
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
 	max:=SCORE_INIT
@@ -1205,11 +1228,12 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 		}
 	}*/
 	nsts:=len(maxsts)
+	tmend:=time.Now()
 	if debug{
-		fmt.Printf("%d calc result: %d step later: %d\n",player.robot,player.level,max)
+		fmt.Printf("time used: %.1f secs. %d calc result: %d step later: %d\n",tmend.Sub(tmstart).Seconds(),player.robot,player.level,max)
 	}
 	if nsts>0{
-		rnd:=rand.New(rand.NewSource(time.Now().UnixNano()))
+		rnd:=rand.New(rand.NewSource(tmend.UnixNano()))
 		retindex:=rnd.Int()%nsts
 		player.Clone(maxplayers[retindex])
 		return &maxsts[retindex]

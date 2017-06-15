@@ -128,7 +128,15 @@ func main() {
 	for ; over == 0; over = player.IsOver() {
 		var x, y int
 		fmt.Scanln(&x, &y)
-		player.SetStep(x, y)
+		if x>0 && y>0 && x<15 && y<15{
+			player.SetStep(x, y)
+		}else{
+			if x== -1 && y == -1{
+				player.Retreat()
+			}
+			player.Draw(false)
+			continue
+		}
 		player.Draw(true)
 		if over = player.IsOver(); over != 0 {
 			break
