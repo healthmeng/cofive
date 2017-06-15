@@ -571,7 +571,8 @@ wout:
 		}
 		if b4>1 && w4<1{	// 4 occurred in 2 places
 			bval+=10000
-		}else if bd3 >1 && (w4<1 && wd3<1){	// double 3
+		}
+		if bd3 >1 && (w4<1 && wd3<1){	// double 3
 			bval+=5000
 		}
 	}else if nextmove==BLACK{
