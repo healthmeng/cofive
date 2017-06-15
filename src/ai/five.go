@@ -272,14 +272,14 @@ func (player* AIPlayer)SetStep(x int,y int){
 func (player* AIPlayer)ApplyStep(st StepInfo){
 	var bshapes,wshapes map[int] int
 	if player.curstep>0{
-		bshapes,wshapes,_=player.CalShape(st.x,st.y)
+		bshapes,wshapes,_=player.CalShape(st.x,st.y,false)
 	}
 	curb:=make(map[int]int)
 	curw:=make(map[int]int)
 	player.frame[st.x][st.y]=st.bw
 	player.steps[player.curstep]=st
 	player.curstep++
-	nbshapes,nwshapes,forbid:=player.CalShape(st.x,st.y)
+	nbshapes,nwshapes,forbid:=player.CalShape(st.x,st.y,true)
 
 	player.steps[player.curstep-1].forbid=forbid
 	if player.curstep>1{
@@ -564,7 +564,7 @@ wout:
 	return bval,wval
 }
 
-func (player* AIPlayer) CountShape(parts []Conti)(map [int]int,map[int]int,int/* forbid type */){
+func (player* AIPlayer) CountShape(parts []Conti,checkfb bool)(map [int]int,map[int]int,int/* forbid type */){
 	bs:=make(map[int]int)
 	ws:=make(map[int]int)
 
@@ -575,7 +575,7 @@ func (player* AIPlayer) CountShape(parts []Conti)(map [int]int,map[int]int,int/*
 		tp:=part.ParseType()
 		if part.bw==BLACK{
 			bs[part.ParseType()]++
-			if player.forbid && ftype==0 && part.isnew{
+			if checkfb && player.forbid && ftype==0 && part.isnew{
 				switch tp{
 					case CCC:
 						nCCC++
@@ -805,7 +805,7 @@ func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	return lines,places
 }
 
-func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int,bool){
+func (player* AIPlayer)CalShape(x,y int, checkfb bool)(map[int]int,map[int]int,bool){
 	lines,places:=player.CrossLines(x,y)
 
 	parts:=make([]Conti,0,MAX_STEP)
@@ -821,7 +821,7 @@ func (player* AIPlayer)CalShape(x,y int)(map[int]int,map[int]int,bool){
 		hasforbid=true
 	}
 */
-	bs,ws,hf:=player.CountShape(parts)
+	bs,ws,hf:=player.CountShape(parts,checkfb)
 	if hf!=0{
 		hasforbid=true
 	}

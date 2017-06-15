@@ -22,19 +22,36 @@ func (player* AIPlayer)getWhiteFormula(x,y int)*StepInfo{
 
 func (player* AIPlayer)getThirdStep() *StepInfo{
     sts := make([]StepInfo, 0, MAX_STEP)
-	x:= player.steps[0].x
-	y:= player.steps[0].y
+	x1,y1:= player.steps[0].x,player.steps[0].y
+	x2,y2:= player.steps[1].x,player.steps[1].y
 	var orders [5]int=[5]int{-1,1,0,-2,2}
+
 	for i:= 0 ;i<5;i++  {
-		tmpx:=orders[i]+x
+		tmpx:=orders[i]+x1
 	    if tmpx< 0 || tmpx >= 15 {
 	        continue
 	    }
 	    for j := 0;j<5; j++ {
-			tmpy:=orders[j]+y
+			tmpy:=orders[j]+y1
 	        if tmpy < 0 || tmpy >= 15 {
 	            continue
 	        }
+			dy:=(y1-y2)*2
+			dx:=(x1-x2)*2
+			switch{
+			case x1==x2:
+				if dy+y1==tmpy && (x1+dy==tmpx || x1-dy==tmpx){
+					continue
+				}
+			case y1==y2:
+				if dx+x1==tmpx && (y1+dx==tmpy || y1-dx==tmpy){
+					continue
+				}
+			default:
+				if x1+dx==tmpx && y1+dy==tmpy{
+					continue
+				}
+			}
 	        if player.frame[tmpx][tmpy] == 0 {
 				sts = append(sts, StepInfo{tmpx, tmpy, 1,false})
 	        }
