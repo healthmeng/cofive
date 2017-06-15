@@ -492,6 +492,7 @@ func (player* AIPlayer)GetCurValues()(int,int){
 		btable[NCC_CCCN]=0
 	}
 
+	bnc3:=0
 bout:
 	for k,v:= range player.bshapes[player.curstep-1]{
 		switch k{
@@ -517,9 +518,15 @@ bout:
 			fallthrough
 		case CCCC:
 			b4+=v
+		case NCCC:
+			bnc3=v
 		}
 		bval+=btable[k]*v
+		if bnc3>1{
+			bval+=(bnc3-1)*300
+		}
 	}
+	wnc3:=0
 wout:
 	for k,v:= range player.wshapes[player.curstep-1]{
 		switch k{
@@ -538,8 +545,13 @@ wout:
 			fallthrough
 		case CCCC :
 			w4+=v
+		case NCCC:
+			wnc3=v
 		}
 		wval+=wtable[k]*v
+		if wnc3>1{
+			wval+=(wnc3-1)*300
+		}
 	}
 	if nextmove==WHITE{// forbid is excluded in IsOver()
 		if bd3>=1 && b4>=1 && w4<1{	// 4-3
