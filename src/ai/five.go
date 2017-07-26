@@ -983,7 +983,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 			if value>curmax{
 				curmax=value
 			}
-			if beta<= -WIN || value>=beta{
+			if beta<= -WIN || curmax>=beta{
 				break
 			}
 		}
@@ -1032,8 +1032,11 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 				min=value
 			}
 			player.UnapplyStep(allst[i])
-			if (alpha>=WIN || value>alpha){
+			if (alpha>=WIN || min<alpha){
 				break
+			}
+			if level==player.level-1{
+				continue
 			}
 			maxvlock.RLock()
 			if (*topmax>alpha){
@@ -1045,7 +1048,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 			}
 		}
 	}
-	return beta
+	return min
 }
 
 func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, maxsts *[]StepInfo, maxplayers *[]*AIPlayer){
@@ -1070,7 +1073,10 @@ func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, ma
 			if over==player.human{
 				value= -WIN
 			}else{
-				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max,SCORE_INIT,-SCORE_INIT)
+				maxvlock.RLock()
+				alpha:=*max
+				maxvlock.RUnlock()
+				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max,alpha,-SCORE_INIT)
 			}
 			maxvlock.RLock()
 			if *max<WIN && value>=*max{
