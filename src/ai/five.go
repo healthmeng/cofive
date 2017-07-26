@@ -726,66 +726,6 @@ func (player* AIPlayer)CountLineParts(line[]int,newone int)[]Conti{
 	return parts
 }
 
-/*
-func (player* AIPlayer)EvalLine(line[]int, place int)(int,int){
-	//bval,wval:=0,0
-	parts:=player.CountParts(line,place)
-	if parts==nil{
-		return 0,0
-	}
-	return player.CountScore(parts)
-}
-func (player* AIPlayer)hasforbid(parts []Conti) int{
-	if player.forbid==false || len(parts)==0{
-			return 0
-	}
-	nCCC:=0
-	nCCCC:=0
-	for _,p:=range parts{
-		if p.isnew{
-			tp:=p.ParseType()
-			switch tp{
-			case CCC:
-				nCCC++
-				if nCCC>=2{
-					return CCC
-				}
-			case CCCC:
-				fallthrough
-			case CCCC_C:
-				fallthrough
-			case CCC_CC:
-				fallthrough
-			case CC_CCC:
-				fallthrough
-			case NCC_CCCN:
-				fallthrough
-			case NCCCC:
-				nCCCC++
-				if nCCCC>=2{
-					return CCCC
-				}
-			case CCCCCC:
-				return CCCCCC
-			}
-		}
-	}
-	return 0
-}
-
-func (player* AIPlayer)CheckForbid(x,y int) int{
-	if player.forbid{
-		lines,places:=player.CrossLines(x,y)
-		parts:=make([]Conti,0,MAX_STEP)
-		for i:=0;i<4;i++{
-			parts=append(parts,player.CountLineParts(lines[i],places[i])...)
-		}
-		return player.hasforbid(parts)
-	}
-
-	return 0
-}
-*/
 func (player* AIPlayer)CrossLines(x,y int)([][]int,[]int){
 	hor:=make([]int,0,15)
 	ver:=make([]int,0,15)
@@ -1002,7 +942,7 @@ func (player* AIPlayer)TraceAll(){
 	fmt.Println("-----End Trace-----")
 }
 
-func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
+func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
 
@@ -1015,7 +955,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
-	alpha:= SCORE_INIT
+	curmax:=SCORE_INIT
 	if nstep<1{// no place left
 		return 0 // drawn 
 	}else{
@@ -1034,21 +974,24 @@ func (player* AIPlayer)GetMax(x,y int,level int,beta int) int{
 			}else if over==player.human{
 				value= -WIN
 			}else{
-				value=player.GetMin(allst[i].x,allst[i].y,level-1,&alpha)
+				value=player.GetMin(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
+			player.UnapplyStep(allst[i])
 			if value>alpha{
 				alpha=value
 			}
-			player.UnapplyStep(allst[i])
-			if beta<= -WIN || alpha>=beta{
+			if value>curmax{
+				curmax=value
+			}
+			if beta<= -WIN || value>=beta{
 				break
 			}
 		}
 	}
-	return alpha
+	return curmax
 }
 
-func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
+func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
 		if player.robot==BLACK{
@@ -1060,7 +1003,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
 
 	allst:=player.getallstep(player.human) // always player.human
 	nstep:=len(allst)
-	beta:= -SCORE_INIT
+	min:=-SCORE_INIT
 	if nstep<1{// no place left
 		return 0 // drawn 
 	}else{
@@ -1080,24 +1023,25 @@ func (player* AIPlayer)GetMin(x,y int,level int, alpha *int) int{
 				//log.Println("Error,impossible: black win in white turn")
 				value=WIN	// forbidden
 			}else{
-				value=player.GetMax(allst[i].x,allst[i].y,level-1,beta)
+				value=player.GetMax(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
 			if value<beta{
 				beta=value
 			}
-
+			if value<min{
+				min=value
+			}
 			player.UnapplyStep(allst[i])
-			if level==player.level-1{
-				maxvlock.RLock()
-				if *alpha>=WIN || beta<*alpha {
-					maxvlock.RUnlock()
-					break
-				}
-				maxvlock.RUnlock()
-			}else{
-				if *alpha>=WIN || beta<=*alpha{ // need not lock
-					break
-				}
+			if (alpha>=WIN || value>alpha){
+				break
+			}
+			maxvlock.RLock()
+			if (*topmax>alpha){
+				alpha=*topmax
+			}
+			maxvlock.RUnlock()
+			if alpha>=WIN || min<alpha {
+				break
 			}
 		}
 	}
@@ -1126,7 +1070,7 @@ func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, ma
 			if over==player.human{
 				value= -WIN
 			}else{
-				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max)
+				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max,SCORE_INIT,-SCORE_INIT)
 			}
 			maxvlock.RLock()
 			if *max<WIN && value>=*max{
@@ -1194,40 +1138,7 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 				<-finished
 			}
 		}
-		/*
-			if i<nstep{
-				if ithread<ncpus{
-					// clone AIPlayer
-					np,_:=InitPlayer(player.robot,player.level,player.forbid)
-					np.Clone(player)
-					ithread++
-					i++
-					go SearchPara(np,allst[i-1],finished,&max,&maxsts,&maxplayers)
-				}else{
-					ret:=<-finished
-					ithread--
-					if ret== 1{	// WIN OR DRAWN, the only step is steup
-						for ithread>0{
-							ret=<-finished
-							ithread--
-						}
-						break
-					}
-					if ithread<0{
-						log.Println("Error!, ithread<0")
-					}
-				}
-			}else{
-				for ithread>0{
-					<-finished
-					ithread--
-				}
-				break
-			}*/
-			}
-/*		}else{
-		}
-	}*/
+	}
 	nsts:=len(maxsts)
 	tmend:=time.Now()
 	if debug{
