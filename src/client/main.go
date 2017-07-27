@@ -3,14 +3,29 @@ package main
 import (
 	"ai"
 	"fmt"
+	"time"
 )
 
 var l1,l2 int
 
-func simulate(show bool) int {
+func simulate(show bool) (winner int,steps int, tm float64){
 	player1, _ := ai.InitPlayer(1, l1, true)
 	player2, _ := ai.InitPlayer(2, l2, true)
 	over := 0
+	tms:=time.Now()
+	defer func (){
+		d:=time.Since(tms)
+		step:=player1.TotalSteps()
+		if step<player2.TotalSteps(){
+			step=player2.TotalSteps()
+		}
+		step-=3
+		if step>0{
+			fmt.Printf("Total %.1f seconds for %d steps, average %.2f seconds per step.\n",d.Seconds(),step,d.Seconds()/float64(step))
+		}
+		steps=step
+		tm=d.Seconds()
+	}()
 	for {
 		x, y := player1.GetStep(show)
 		if show {
@@ -22,17 +37,20 @@ func simulate(show bool) int {
 			if show{
 				fmt.Println("Black win")
 			}
-			return 1
+			winner= 1
+			return
 		} else if over == -1 {
 			if show{
 			fmt.Println("Drawn...")
 			}
-			return -1
+			winner= -1
+			return
 		}else if over==2{
 			if show{
 			fmt.Println("White win")
 			}
-			return 2
+			winner=2
+			return
 		}
 		player2.SetStep(x, y)
 		x, y = player2.GetStep(show)
@@ -45,12 +63,14 @@ func simulate(show bool) int {
 			if show{
 			fmt.Println("White win")
 			}
-			return 2
+			winner=2
+			return
 		} else if over == -1 {
 			if show{
 			fmt.Println("Drawn...")
 			}
-			return -1
+			winner= -1
+			return
 		}
 
 		player1.SetStep(x, y)
@@ -96,8 +116,13 @@ func main() {
 		}
 	fmt.Println("Player1,2 level:")
 	fmt.Scanf("%d%d",&l1,&l2)
+	totalstep:=0
+	var totaltime float64=0.0
 		for i := 0; i < color; i++ {
-			switch simulate(show) {
+			winner,s,t:=simulate(show)
+			totalstep+=s
+			totaltime+=t
+			switch winner {
 			case 1:
 				bw++
 			case 2:
@@ -107,7 +132,7 @@ func main() {
 			}
 			fmt.Println("Current win times: black/white/drawn",bw,ww,dw)
 		}
-		fmt.Printf("player1:%d, player2:%d. Total %d times, black win %d, white win %d, Drawn %d\n",l1,l2, color, bw, ww, dw)
+		fmt.Printf("player1:%d, player2:%d. Total %d times, black win %d, white win %d, Drawn %d, total %d steps, %.1f secs, %.2f secs per step.\n",l1,l2, color, bw, ww, dw,totalstep,totaltime,totaltime/float64(totalstep))
 		return
 	}
 	fmt.Println("AI level:")

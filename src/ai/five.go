@@ -123,6 +123,10 @@ type AIPlayer struct{
 	robot, human int
 }
 
+func (player* AIPlayer)TotalSteps() int{
+	return player.curstep
+}
+
 func (dst* AIPlayer)Clone(src *AIPlayer){
 	for i:=0;i<15;i++{
 		for j:=0;j<15;j++{
@@ -977,12 +981,19 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 				value=player.GetMin(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
 			player.UnapplyStep(allst[i])
-			if value>alpha{
-				alpha=value
-			}
+
+      /*      maxvlock.RLock()
+            if (*topmax>alpha){
+                alpha=*topmax
+            }
+            maxvlock.RUnlock()*/
 			if value>curmax{
 				curmax=value
+				if curmax>alpha{
+					alpha=curmax
+				}
 			}
+
 			if beta<= -WIN || curmax>=beta{
 				break
 			}
