@@ -123,6 +123,49 @@ type AIPlayer struct{
 	robot, human int
 }
 
+/* return value:
+	0: not same
+	1: same 
+	2: same after rotate 90 degree 
+	3. same after rotate 180 degree
+	4. same after rotate 270 degree
+*/
+func (player* AIPlayer)Compare(x,y[]int) int{
+	flags:=[4]int{1,1,1,1}
+steploop:
+	for i:=0;i<player.curstep;i++{
+		switch{
+		case flags[0]==1:
+			if player.steps[i].x!=x[i] || player.steps[i].y!=y[i]{
+				flags[0]=0
+			}
+			fallthrough
+		case flags[1]==1:
+			if player.steps[i].y!=x[i] || 14-player.steps[i].x!=y[i]{
+				flags[1]=0
+			}
+			fallthrough
+		case flags[2]==1:
+			if 14-player.steps[i].x!=x[i] || 14-player.steps[i].y!=y[i]{
+				flags[2]=0
+			}
+			fallthrough
+		case flags[3]==1:
+			if 14-player.steps[i].y!=x[i] || player.steps[i].x!=y[i]{
+				flags[3]=0
+			}
+		default:
+			break steploop
+		}
+	}
+	for i:=0;i<4;i++{
+		if flags[i]!=0{
+			return i+1
+		}
+	}
+	return 0
+}
+
 func (player* AIPlayer)TotalSteps() int{
 	return player.curstep
 }

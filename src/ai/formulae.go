@@ -10,7 +10,7 @@ func (player* AIPlayer)getWhiteFormula(x,y int)*StepInfo{
 	sts:=make([]StepInfo,0,8)
 	for i:=-1;i<=1;i++{
 		for j:=-1;j<=1;j++{
-			if player.frame[x+i][y+j]==0{
+			if x+i>=0 && x+i<15 && y+j>=0 && y+j<15 && player.frame[x+i][y+j]==0{
 				sts=append(sts,StepInfo{x+i,y+j,2,false})
 			}
 		}

@@ -84,7 +84,7 @@ func manual() {
 	p.Draw(true)
 	for {
 		var x, y int
-		fmt.Scanln(&x, &y)
+		fmt.Scanf("%d%d",&x, &y)
 		p.SetStep(x, y)
 		p.Draw(true)
 		if over := p.IsOver(); over != 0 {
@@ -153,7 +153,7 @@ func main() {
 	for ; over == 0; over = player.IsOver() {
 		var x, y int
 		fmt.Scanln(&x, &y)
-		if x>0 && y>0 && x<15 && y<15{
+		if x>=0 && y>=0 && x<15 && y<15{
 			player.SetStep(x, y)
 		}else{
 			if x== -1 && y == -1{
