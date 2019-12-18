@@ -130,6 +130,7 @@ type AIPlayer struct{
 	3. same after rotate 180 degree
 	4. same after rotate 270 degree
 */
+
 func (player* AIPlayer)Compare(x,y[]int) int{
 	flags:=[4]int{1,1,1,1}
 steploop:
