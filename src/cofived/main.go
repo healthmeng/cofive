@@ -8,6 +8,7 @@ import (
 "ai"
 "bufio"
 "net"
+"sync"
 )
 
 /*
@@ -29,7 +30,13 @@ func CreateRand() int64{
 	return rand.Int63()
 }
 
-var tkdata map[int] *ai.AIPlayer
+type CalcData struct{
+	player *ai.AIPlayer
+	chRet chan int
+}
+
+var tkdata map[int64] *CalcData
+var maplock sync.RWMutex
 
 func ReplyOver(over int){
 }
@@ -56,35 +63,75 @@ func CreateBySteps(info *StepsInfo)(*ai.AIPlayer,int64){
 	}
 	return p,id
 }
-
-func ProcCurrent(conn net.Conn,p *ai.AIPlayer, id int64){
+func ProcCurrent(conn net.Conn,p* ai.AIPlayer, id int64){
+		bval,wval:=p.GetCurValues()
+		over:=p.IsOver()
+		res:=fmt.Sprintf("%d %d %d %d\n",over,id,bval,wval)
+		conn.Write([]byte(res))
+		if over!=0{
+			return
+		}
+		cdata:=CalcData{p,make (chan int)}
+		maplock.Lock()
+		tkdata[id]=&cdata
+		maplock.Unlock()
+		go func (player *ai.AIPlayer){
+			defer func (){
+				maplock.Lock()
+				delete(tkdata,id)
+				maplock.Unlock()
+			}()
+			x,y:=player.GetStep(false)
+			cdata.chRet<-x
+			select {
+			case <-time.After(time.Second*60):
+			case cdata.chRet<-y:
+				cdata.chRet<-over
+				cdata.chRet<-bval
+				cdata.chRet<-wval
+			}
+		}(p)
 }
 
 func ProcNext(conn net.Conn, id int64){
+	maplock.RLock()
+	cdata,exists:=tkdata[id]
+	maplock.RUnlock()
+	if !exists{
+		conn.Write([]byte("ERROR"))
+		return
+	}
+	x,y,over,bval,wval:=<-cdata.chRet,<-cdata.chRet,<-cdata.chRet,<-cdata.chRet,<-cdata.chRet
+	conn.Write([]byte(fmt.Sprintf("OK\n%d %d %d %d %d",x,y,over,bval,wval)))
 }
 
 func procConn(conn net.Conn){
 	defer conn.Close()
 	rd:=bufio.NewReader(conn)
 	line,_,err:=rd.ReadLine()
+	var steps StepsInfo
 	if err!=nil{
 		log.Println("Get command error:",err)
 		return
 	}
 	switch string(line){
 	case "PostStep":
-		var steps StepsInfo
 		line,_,err=rd.ReadLine()
-		var num int
-		fmt.Sscanf(string(line),"%d%d%d",&num,&steps.forbid,&steps.level)
+		var num ,forbid int
+		fmt.Sscanf(string(line),"%d%d%d",&num,&forbid,&steps.level)
+		if forbid==0{
+			steps.forbid=false
+		}else{
+			steps.forbid=true
+		}
 		steps.x=make([]int,num)
 		steps.y=make([]int,num)
 		for i:=0;i<num;i++{
 			line,_,err=rd.ReadLine()
-			x,y:=0,0
-			fmt.Sscanf(string(line),"%d%d",&x,&y)
+			fmt.Sscanf(string(line),"%d%d",&steps.x[i],&steps.y[i])
 		}
 		p,id:=CreateBySteps(&steps)
+		fmt.Println(steps)
 		ProcCurrent(conn,p,id)
 	case "GetFromID":
 		line,_,err=rd.ReadLine()
@@ -95,7 +142,7 @@ func procConn(conn net.Conn){
 }
 
 func main(){
-	tkdata=make(map[int] *ai.AIPlayer)
+	tkdata=make(map[int64]*CalcData )
 	lis,err:=net.Listen("tcp",":547")
 	if err!=nil{
 		fmt.Println("Svr listen error:",err)
