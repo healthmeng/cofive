@@ -101,6 +101,10 @@ type StepInfo struct{
 	forbid bool
 }
 
+type Pos struct{
+	X,Y int
+}
+
 type Conti struct{
 	leftsp int
 	rightsp int
@@ -317,6 +321,22 @@ func (player* AIPlayer)SetStep(x int,y int){
 	player.ApplyStep(StepInfo{x,y,player.curstep%2+1,false})
 }
 
+func (player* AIPlayer)SetForbidInt(f int){
+	if f==0{
+		player.forbid=false
+	}else{
+		player.forbid=true
+	}
+}
+
+func (player* AIPlayer)GetForbidInt()int{
+	forbid:=1
+	if !player.forbid{
+		forbid=0
+	}
+	return forbid
+}
+
 func (player* AIPlayer)ApplyStep(st StepInfo){
 	var bshapes,wshapes map[int] int
 	if player.curstep>0{
@@ -400,8 +420,13 @@ func (player* AIPlayer)GetFrame() [15][15] int{
 	return player.frame
 }
 
-func (player* AIPlayer)ListSteps() ([]StepInfo,int){
-	return player.steps,player.curstep
+func (player* AIPlayer)ListSteps() ([]Pos,int){
+	pos:=make([]Pos,player.curstep,player.curstep)
+	for i:=0;i<player.curstep;i++{
+		pos[i].X=player.steps[i].x
+		pos[i].Y=player.steps[i].y
+	}
+	return pos,player.curstep
 }
 
 func (part *Conti)ParseType()int{
@@ -1044,6 +1069,10 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 		}
 	}
 	return curmax
+}
+
+func (player* AIPlayer)GetAIColor() int{
+	return player.robot
 }
 
 func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta int) int{

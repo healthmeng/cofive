@@ -2,7 +2,10 @@ package main
 
 import (
 	"ai"
+	"errors"
 	"fmt"
+	"net"
+	"bufio"
 	"time"
 )
 
@@ -163,7 +166,7 @@ func main() {
 		player.GetStep(true)
 	}
 	player.Draw(true)
-	for ; over == 0; over = player.IsOver() {
+	for ; over == 0; /*over = player.IsOver() */{
 		var x, y int
 		fmt.Scanln(&x, &y)
 		if x>=0 && y>=0 && x<15 && y<15{
@@ -176,10 +179,30 @@ func main() {
 			continue
 		}
 		player.Draw(true)
-		if over = player.IsOver(); over != 0 {
+		var id int64
+		var err error
+		if color<0{
+			id,over,err=SendNet(player)
+			if err!=nil{
+				fmt.Println("network error:",err)
+				return
+			}
+		}else{
+			over = player.IsOver()
+		}
+		if over!=0{
 			break
 		}
-		x, y = player.GetStep(true)
+		if color<0{
+			over,err=GetFromNet(player,id)
+			if err!=nil{
+				fmt.Println("network error:",err)
+				return
+			}
+		}else{
+			player.GetStep(true)
+			over=player.IsOver()
+		}
 		player.Draw(true)
 		player.DebugStep()
 	}
@@ -189,5 +212,48 @@ func main() {
 		fmt.Println("White win")
 	} else {
 		fmt.Println("Drawn")
+	}
+}
+
+var rip string ="127.0.0.1"
+var rport string=":547"
+
+func SendNet(p *ai.AIPlayer)(int64,int,error){
+	conn,err:=net.Dial("tcp",rip+rport)
+	if err!=nil{
+		return 0,0,err
+	}
+	defer conn.Close()
+	steps,cnt:=p.ListSteps()
+	sndstr:=fmt.Sprintf("PostStep\n%d %d %d\n",cnt,p.GetForbidInt(),p.GetAIColor())
+	for _,pos:=range steps{
+		sndstr+=fmt.Sprintf("%d %d\n",pos.X,pos.Y)
+	}
+	fmt.Println("sending:",sndstr)
+	conn.Write([]byte(sndstr))
+	rb:=bufio.NewReader(conn)
+	line,_,_:=rb.ReadLine()
+	var over,bval,wval int
+	var id int64
+	fmt.Sscanf(string(line),"%d%d%d%d",&over,&id,&bval,&wval)
+	return id,over,nil
+}
+
+func GetFromNet(p *ai.AIPlayer,id int64)(int,error){
+	conn,err:=net.Dial("tcp",rip+rport)
+	if err!=nil{
+		return 0,err
+	}
+	conn.Write([]byte(fmt.Sprintf("GetFromID\n%d\n",id)))
+	rb:=bufio.NewReader(conn)
+	line,_,_:=rb.ReadLine()
+	if string(line)=="OK"{
+		line,_,_=rb.ReadLine()
+		var x,y,over,bval,wval int
+		fmt.Sscanf(string(line),"%d%d%d%d%d",&x,&y,&over,&bval,&wval)
+		p.SetStep(x,y)
+		return over,nil
+	}else{
+		return 0,errors.New("id error")
 	}
 }

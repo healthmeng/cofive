@@ -82,6 +82,8 @@ func ProcCurrent(conn net.Conn,p* ai.AIPlayer, id int64){
 				maplock.Unlock()
 			}()
 			x,y:=player.GetStep(false)
+			over=player.IsOver()
+			bval,wval=player.GetCurValues()
 			cdata.chRet<-x
 			select {
 			case <-time.After(time.Second*60):
@@ -131,7 +133,6 @@ func procConn(conn net.Conn){
 			fmt.Sscanf(string(line),"%d%d",&steps.x[i],&steps.y[i])
 		}
 		p,id:=CreateBySteps(&steps)
-		fmt.Println(steps)
 		ProcCurrent(conn,p,id)
 	case "GetFromID":
 		line,_,err=rd.ReadLine()
