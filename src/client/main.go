@@ -139,14 +139,27 @@ func main() {
 	var al int
 	fmt.Scanln(&al)
 	fmt.Println("Start:")
-	player, err := ai.InitPlayer(color,al, true)
+
+	netcolor:=-1
+	var player *ai.AIPlayer
+	var err error
+	if color<0{
+		if color==-1{
+			netcolor=ai.BLACK
+		} else if color==-2{
+			netcolor=ai.WHITE
+		}
+		player, err = ai.InitPlayer(netcolor,al, true)
+	}else{
+		player, err = ai.InitPlayer(color,al, true)
+	}
 	//player, err := ai.InitPlayer(color, 2, true)
 	if err != nil {
 		fmt.Println("Init server error:", err)
 		return
 	}
 	over := 0
-	if color == ai.BLACK {
+	if color == ai.BLACK || netcolor==ai.BLACK {
 		player.GetStep(true)
 	}
 	player.Draw(true)
