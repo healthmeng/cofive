@@ -1075,6 +1075,10 @@ func (player* AIPlayer)GetAIColor() int{
 	return player.robot
 }
 
+func (player* AIPlayer)GetAILevel() int{
+	return player.level
+}
+
 func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()

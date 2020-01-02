@@ -166,6 +166,7 @@ func main() {
 		player.GetStep(true)
 	}
 	player.Draw(true)
+	var id int64 =-1
 	for ; over == 0; /*over = player.IsOver() */{
 		var x, y int
 		fmt.Scanln(&x, &y)
@@ -179,7 +180,6 @@ func main() {
 			continue
 		}
 		player.Draw(true)
-		var id int64
 		var err error
 		if color<0{
 			id,over,err=SendNet(player)
@@ -225,7 +225,7 @@ func SendNet(p *ai.AIPlayer)(int64,int,error){
 	}
 	defer conn.Close()
 	steps,cnt:=p.ListSteps()
-	sndstr:=fmt.Sprintf("PostStep\n%d %d %d\n",cnt,p.GetForbidInt(),p.GetAIColor())
+	sndstr:=fmt.Sprintf("PostStep\n%d %d %d\n",cnt,p.GetForbidInt(),p.GetAILevel())
 	for _,pos:=range steps{
 		sndstr+=fmt.Sprintf("%d %d\n",pos.X,pos.Y)
 	}

@@ -96,15 +96,19 @@ func ProcCurrent(conn net.Conn,p* ai.AIPlayer, id int64){
 }
 
 func ProcNext(conn net.Conn, id int64){
+	if id==-1{ // start:
+		conn.Write([]byte("OK\n7 7 0 0 0\n"))
+		return
+	}
 	maplock.RLock()
 	cdata,exists:=tkdata[id]
 	maplock.RUnlock()
 	if !exists{
-		conn.Write([]byte("ERROR"))
+		conn.Write([]byte("ERROR\n"))
 		return
 	}
 	x,y,over,bval,wval:=<-cdata.chRet,<-cdata.chRet,<-cdata.chRet,<-cdata.chRet,<-cdata.chRet
-	conn.Write([]byte(fmt.Sprintf("OK\n%d %d %d %d %d",x,y,over,bval,wval)))
+	conn.Write([]byte(fmt.Sprintf("OK\n%d %d %d %d %d\n",x,y,over,bval,wval)))
 }
 
 func procConn(conn net.Conn){
