@@ -11,9 +11,9 @@ import (
 
 var l1,l2 int
 
-func simulate(show bool) (winner int,steps int, tm float64){
-	player1, _ := ai.InitPlayer(1, l1, true)
-	player2, _ := ai.InitPlayer(2, l2, true)
+func simulate(show ,forbid bool) (winner int,steps int, tm float64){
+	player1, _ := ai.InitPlayer(1, l1, forbid)
+	player2, _ := ai.InitPlayer(2, l2, forbid)
 	over := 0
 	tms:=time.Now()
 	defer func (){
@@ -80,10 +80,10 @@ func simulate(show bool) (winner int,steps int, tm float64){
 	}
 }
 
-func manual() {
+func manual(forbid bool) {
 	//	p1:=ai.InitPlayer(BLACK)
 	//	p2:=ai.InitPlayer(WHITE)
-	p, _ := ai.InitPlayer(ai.WHITE, 0, true)
+	p, _ := ai.InitPlayer(ai.WHITE, 0, forbid)
 	p.Draw(true)
 	for {
 		var x, y int
@@ -107,8 +107,15 @@ func main() {
 	fmt.Println("Robot use Black(1) or White(2)?")
 	color := 0
 	fmt.Scanln(&color)
+	forbid:=true
+	yn:=""
+	fmt.Println("Forbidden?(y/n)")
+	fmt.Scanf("%s",&yn)
+	if yn=="n"{
+		forbid=false
+	}
 	if color == 0 {
-		manual()
+		manual(forbid)
 		return
 	}
 	if color > 2 {
@@ -119,10 +126,11 @@ func main() {
 		}
 	fmt.Println("Player1,2 level:")
 	fmt.Scanf("%d%d",&l1,&l2)
+
 	totalstep:=0
 	var totaltime float64=0.0
 		for i := 0; i < color; i++ {
-			winner,s,t:=simulate(show)
+			winner,s,t:=simulate(show,forbid)
 			totalstep+=s
 			totaltime+=t
 			switch winner {
@@ -152,9 +160,9 @@ func main() {
 		} else if color==-2{
 			netcolor=ai.WHITE
 		}
-		player, err = ai.InitPlayer(netcolor,al, true)
+		player, err = ai.InitPlayer(netcolor,al, forbid)
 	}else{
-		player, err = ai.InitPlayer(color,al, true)
+		player, err = ai.InitPlayer(color,al, forbid)
 	}
 	//player, err := ai.InitPlayer(color, 2, true)
 	if err != nil {
