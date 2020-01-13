@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <title>五子棋</title>
+ <style type="text/css">
+  canvas{
+  display: block;
+  margin: 50px auto;
+  box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
+  }
+ </style>
+</head>
+<body>
+ <canvas id="mycanvas" width="450px" height="450px"></canvas>
+ <script type="text/javascript">
+// box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
+  var chess = document.getElementById("mycanvas");
+  var isOver=0;
+  var context = chess.getContext('2d');
+  var step=0;
+  var stx=new Array(255);
+  var sty=new Array(255);
+  var chessBox = [];//用于存放棋盘中落子的情况
+  for(var i=0;i<15;i++){
+   chessBox[i]=[];
+   for(var j=0;j<15;j++){
+    chessBox[i][j]=0;//初始值为0
+   }
+  }
+  function drawChessBoard(){
+//	context.clearRect(0,0,450,450);
+//	context.height=context.height;
+	context.fillStyle='#ca8622';
+	//context.fillStyle='#999900';
+	context.fillRect(0,0,450,450);
+	context.beginPath();
+   for(var i=0;i<15;i++){
+    context.strokeStyle="#D6D1D1";
+    context.moveTo(15+i*30,15);//垂直方向画15根线，相距30px;
+    context.lineTo(15+i*30,435);
+    context.stroke();
+    context.moveTo(15,15+i*30);//水平方向画15根线，相距30px;棋盘为14*14；
+    context.lineTo(435,15+i*30);
+    context.stroke();
+   }
+  }
+  drawChessBoard();//绘制棋盘
+  function oneStep(i,j){
+   context.beginPath();
+   context.arc(15+i*30,15+j*30,13,0,2*Math.PI);//绘制棋子
+   context.closePath();
+   var g=context.createRadialGradient(15+i*30,15+j*30,13,15+i*30,15+j*30,0);//设置渐变
+   if(step%2==0){       //黑棋，否则是白棋
+    g.addColorStop(0,'#0A0A0A');//黑棋
+    g.addColorStop(1,'#636766');
+   }else {
+    g.addColorStop(0,'#D1D1D1');//白棋
+    g.addColorStop(1,'#F9F9F9');
+   }
+   context.fillStyle=g;
+   context.fill();
+   stx[step]=i;
+   sty[step]=j;
+  }
+
+document.oncontextmenu = function(){return false;}     //禁止鼠标右键菜单显示
+
+//document.body.onmouseup = function(e){     //在body里点击触发事件
+chess.onmouseup = function(e){     //在body里点击触发事件
+
+//     var res = document.getElementById('mycanvas');      //找到id为box的div
+        if(e.button==0 || e.button==1){    
+	
+//  chess.onclick=function(e){
+	if (isOver!=0) return;
+   var x = e.offsetX;//相对于棋盘左上角的x坐标
+   var y = e.offsetY;//相对于棋盘左上角的y坐标
+   var i = Math.floor(x/30);
+   var j = Math.floor(y/30);
+   if( chessBox[i][j] == 0 ) {
+    oneStep(i,j);
+    if(step%2==0){
+     chessBox[i][j]=1;
+    }else{
+     chessBox[i][j]=2;
+    }
+	step++;
+   }
+  }else if(e.button==2){
+		if(step>1){
+			chessBox[stx[step-1]][sty[step-1]]=0;
+			chessBox[stx[step-2]][sty[step-2]]=0;
+			step-=2;
+			redraw();
+		}
+	}
+ }
+	
+
+  function redraw(){
+		drawChessBoard();
+	var i;
+	for(i=0;i<step;i++){
+	   context.beginPath();
+   context.arc(15+stx[i]*30,15+sty[i]*30,13,0,2*Math.PI);//绘制棋子
+   context.closePath();
+   var g=context.createRadialGradient(15+stx[i]*30,15+sty[i]*30,13,15+stx[i]*30,15+sty[i]*30,0);//设置渐变
+   if(i%2==0){       //黑棋，否则是白棋
+    g.addColorStop(0,'#0A0A0A');//黑棋
+    g.addColorStop(1,'#636766');
+   }else {
+    g.addColorStop(0,'#D1D1D1');//白棋
+    g.addColorStop(1,'#F9F9F9');
+   }
+   context.fillStyle=g;
+   context.fill();
+	}
+  }
+ </script>
+</body>
+</html>
