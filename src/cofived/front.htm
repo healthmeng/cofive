@@ -13,11 +13,12 @@
  </style>
 </head>
 <body>
+<form name="frm">
  <canvas id="mycanvas" width="450px" height="450px"></canvas>
-<input type="hidden" name="level" value={{.Level}} />
-<input type="hidden" name="color" value={{.Color}} />
-<input type="hidden" name="forbid" value={{.Forbid}} />
-
+<input type="hidden" id="level" value={{.Level}} />
+<input type="hidden" id="color" value={{.Color}} />
+<input type="hidden" id="forbid" value={{.Forbid}} />
+</form>
  <script type="text/javascript">
 // box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
   var chess = document.getElementById("mycanvas");
@@ -29,9 +30,9 @@
   var stx=new Array(255);
   var sty=new Array(255);
   var chessBox = [];//用于存放棋盘中落子的情况
-  var level=document.getElementsByName("level");
-  var color=document.getElementsByName("color"); //human
-  var forbid=document.getElementsByName("forbid");
+  var level=frm.level.value;
+  var color=frm.color.value; //human
+  var forbid=frm.forbid.value;
 
   for(var i=0;i<15;i++){
    chessBox[i]=[];
@@ -64,9 +65,9 @@
 	myturn=1;
 
 function doOver(){
-context.font = "12px bold 宋体";
+context.font = "24px bold 宋体";
 // 设置颜色
-context.fillStyle = "#ff0";
+context.fillStyle = "#0000ff";
 // 设置水平对齐方式
 context.textAlign = "center";
 // 设置垂直对齐方式
@@ -74,11 +75,11 @@ context.textBaseline = "top";
 context.moveTo(1,1);
 // 绘制文字（参数：要写的字，x坐标，y坐标）
 	if(isOver==1){
-		context.fillText("胜负已分，黑棋胜", 450, 20);
+		context.fillText("胜负已分，黑棋胜", 225, 20);
 	}else if(isOver==2){
-		context.fillText("胜负已分，白棋胜", 450, 20);
+		context.fillText("胜负已分，白棋胜", 225, 20);
 	}else if(isOver<0){
-		context.fillText("居然和棋了...", 450, 20);
+		context.fillText("居然和棋了...", 225, 20);
 	}
 }
 
@@ -103,11 +104,7 @@ function getNext(){
         }  
 		xmlhttp.responseType="text";
 		xmlhttp.open("POST",ul);
-		xmlhttp.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); 
-		var fdt = new FormData();//formElement);
-		fdt.append("level",level);
-		fdt.append("forbid",forbid);
-		fdt.append("num",step);
+		xmlhttp.setRequestHeader("Content-Type","application/json"); 
 		var sts="";
 		var i;
 		for (i=0;i<step;i++){
@@ -115,19 +112,47 @@ function getNext(){
 				sts+=";";
 			sts+=(stx[i]+","+sty[i]);
 		}
-		fdt.append("steps",sts);
 		xmlhttp.onreadystatechange=function (e){
 			if(xmlhttp.readyState==4 && xmlhttp.status==200){
 				var jtxt=xmlhttp.responseText;
 				var jobj=JSON.parse(jtxt);
-				alert("result: over->"+jobj.IsOver+",id->"+jobj.Id);
+	//			alert("result: over->"+jobj.IsOver+",id->"+jobj.Id);
+				isOver=Number(jobj.IsOver)
+				if (isOver){
+					doOver();
+					return
+				}
+				xhr=new XMLHttpRequest();
+		        if(xhr.overrideMimeType) {  
+				xhr.overrideMimeType("text/html");  
+        		}  
+        		xhr.responseType="text";
+				xhr.open("GET","/GetFromID?id="+jobj.Id);
+				xhr.onreadystatechange=function(c){
+				if(xhr.readyState==4 && xhr.status==200){
+					var ret=xhr.responseText;
+					var robj=JSON.parse(ret);
+					oneStep(Number(robj.X),Number(robj.Y));
+					isOver=Number(robj.IsOver);
+					if(isOver){
+						doOver();
+						return;
+					}
+					myturn=1;
+					}	
+				}
+				xhr.send();
 			}
 		}
-    	xmlhttp.onload = function(e) {
-        console.log('httpPostTest onload。e====>' + JSON.stringify(e));
+    	xmlhttp.onload = function(e){
+        	console.log('httpPostTest onload。e====>' + JSON.stringify(e));
     	}
-		console.log(fdt);
-		xmlhttp.send(fdt);
+		xmlhttp.send(JSON.stringify({
+				"Level" : Number(level),
+				"Forbid" : Number(forbid),
+				"Num" : step,
+				"Steps" : sts
+		}));
 	}
 }
 
