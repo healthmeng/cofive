@@ -104,7 +104,7 @@ function getNext(){
 		xmlhttp.responseType="text";
 		xmlhttp.open("POST",ul);
 		xmlhttp.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); 
-		var fdt=new FormData();
+		var fdt = new FormData();//formElement);
 		fdt.append("level",level);
 		fdt.append("forbid",forbid);
 		fdt.append("num",step);
@@ -117,16 +117,17 @@ function getNext(){
 		}
 		fdt.append("steps",sts);
 		xmlhttp.onreadystatechange=function (e){
-			if(xmlhttp.readState==4 && xmlhttp.status==200){
+			if(xmlhttp.readyState==4 && xmlhttp.status==200){
 				var jtxt=xmlhttp.responseText;
-				JSON.parse(jtxt);
-				alert("result: over"+IsOver+",id:",Id);
+				var jobj=JSON.parse(jtxt);
+				alert("result: over->"+jobj.IsOver+",id->"+jobj.Id);
 			}
 		}
     	xmlhttp.onload = function(e) {
         console.log('httpPostTest onload。e====>' + JSON.stringify(e));
     	}
-		xmlhttp.send(sts);
+		console.log(fdt);
+		xmlhttp.send(fdt);
 	}
 }
 

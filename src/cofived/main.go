@@ -194,7 +194,7 @@ func HttpPostStep(w http.ResponseWriter, r *http.Request){
 		if err:=r.ParseForm();err!=nil{
 			fmt.Println("parse form error:",err)
 		}else{
-			fmt.Printf("level:%s, forbid %s, num:%s", r.FormValue("level"),r.FormValue("forbid"),r.FormValue("num"))
+			fmt.Printf("level:%s, forbid %s, num:%s", r.Form["level"],r.Form["forbid"],r.Form["num"])
 		}
 		var steps StepsInfo
 		steps.level,_=strconv.Atoi(r.FormValue("level"))
