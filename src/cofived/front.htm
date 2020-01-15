@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8">
+<meta charset="UTF-8">
+<meta http-equiv="Access-Control-Allow-Origin" content="*">
  <title>五子棋</title>
  <style type="text/css">
   canvas{
@@ -13,15 +14,25 @@
 </head>
 <body>
  <canvas id="mycanvas" width="450px" height="450px"></canvas>
+<input type="hidden" name="level" value={{.Level}} />
+<input type="hidden" name="color" value={{.Color}} />
+<input type="hidden" name="forbid" value={{.Forbid}} />
+
  <script type="text/javascript">
 // box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
   var chess = document.getElementById("mycanvas");
   var isOver=0;
   var context = chess.getContext('2d');
   var step=0;
+  var remoteid="";
+  var myturn=0;
   var stx=new Array(255);
   var sty=new Array(255);
   var chessBox = [];//用于存放棋盘中落子的情况
+  var level=document.getElementsByName("level");
+  var color=document.getElementsByName("color"); //human
+  var forbid=document.getElementsByName("forbid");
+
   for(var i=0;i<15;i++){
    chessBox[i]=[];
    for(var j=0;j<15;j++){
@@ -45,8 +56,81 @@
     context.stroke();
    }
   }
+
   drawChessBoard();//绘制棋盘
-  function oneStep(i,j){
+  if (color=="black"){
+		getNext();
+	}
+	myturn=1;
+
+function doOver(){
+context.font = "12px bold 宋体";
+// 设置颜色
+context.fillStyle = "#ff0";
+// 设置水平对齐方式
+context.textAlign = "center";
+// 设置垂直对齐方式
+context.textBaseline = "top";
+context.moveTo(1,1);
+// 绘制文字（参数：要写的字，x坐标，y坐标）
+	if(isOver==1){
+		context.fillText("胜负已分，黑棋胜", 450, 20);
+	}else if(isOver==2){
+		context.fillText("胜负已分，白棋胜", 450, 20);
+	}else if(isOver<0){
+		context.fillText("居然和棋了...", 450, 20);
+	}
+}
+
+function getNext(){
+	myturn=0;
+	var x,y;
+	if(step==0){
+		x=7;
+		y=7;
+		oneStep(x,y);
+		myturn=1;
+	}else{
+		var xmlhttp;
+		var ul="/PostStep"
+		xmlhttp=new XMLHttpRequest();
+		if(!xmlhttp){
+			alert("xmlhttp create error");
+			return ;
+		}
+  		if(xmlhttp.overrideMimeType) {  
+            xmlhttp.overrideMimeType("text/html");  
+        }  
+		xmlhttp.responseType="text";
+		xmlhttp.open("POST",ul);
+		xmlhttp.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); 
+		var fdt=new FormData();
+		fdt.append("level",level);
+		fdt.append("forbid",forbid);
+		fdt.append("num",step);
+		var sts="";
+		var i;
+		for (i=0;i<step;i++){
+			if(i>0)
+				sts+=";";
+			sts+=(stx[i]+","+sty[i]);
+		}
+		fdt.append("steps",sts);
+		xmlhttp.onreadystatechange=function (e){
+			if(xmlhttp.readState==4 && xmlhttp.status==200){
+				var jtxt=xmlhttp.responseText;
+				JSON.parse(jtxt);
+				alert("result: over"+IsOver+",id:",Id);
+			}
+		}
+    	xmlhttp.onload = function(e) {
+        console.log('httpPostTest onload。e====>' + JSON.stringify(e));
+    	}
+		xmlhttp.send(sts);
+	}
+}
+
+function oneStep(i,j){
    context.beginPath();
    context.arc(15+i*30,15+j*30,13,0,2*Math.PI);//绘制棋子
    context.closePath();
@@ -54,39 +138,41 @@
    if(step%2==0){       //黑棋，否则是白棋
     g.addColorStop(0,'#0A0A0A');//黑棋
     g.addColorStop(1,'#636766');
+     chessBox[i][j]=1;
    }else {
     g.addColorStop(0,'#D1D1D1');//白棋
     g.addColorStop(1,'#F9F9F9');
+     chessBox[i][j]=2;
    }
    context.fillStyle=g;
    context.fill();
+
    stx[step]=i;
    sty[step]=j;
-  }
+	step++;
+ }
 
 document.oncontextmenu = function(){return false;}     //禁止鼠标右键菜单显示
 
 //document.body.onmouseup = function(e){     //在body里点击触发事件
 chess.onmouseup = function(e){     //在body里点击触发事件
+	if(myturn==0) return ;
 
 //     var res = document.getElementById('mycanvas');      //找到id为box的div
-        if(e.button==0 || e.button==1){    
+       if(e.button==0 || e.button==1){    
 	
-//  chess.onclick=function(e){
 	if (isOver!=0) return;
    var x = e.offsetX;//相对于棋盘左上角的x坐标
    var y = e.offsetY;//相对于棋盘左上角的y坐标
    var i = Math.floor(x/30);
    var j = Math.floor(y/30);
-   if( chessBox[i][j] == 0 ) {
+   if( chessBox[i][j] != 0 )
+	return ;
     oneStep(i,j);
-    if(step%2==0){
-     chessBox[i][j]=1;
-    }else{
-     chessBox[i][j]=2;
-    }
-	step++;
-   }
+	getNext();
+	if(isOver!=0){
+		return ;
+	}
   }else if(e.button==2){
 		if(step>1){
 			chessBox[stx[step-1]][sty[step-1]]=0;
@@ -95,11 +181,11 @@ chess.onmouseup = function(e){     //在body里点击触发事件
 			redraw();
 		}
 	}
- }
+}
 	
 
-  function redraw(){
-		drawChessBoard();
+function redraw(){
+	drawChessBoard();
 	var i;
 	for(i=0;i<step;i++){
 	   context.beginPath();
@@ -116,7 +202,8 @@ chess.onmouseup = function(e){     //在body里点击触发事件
    context.fillStyle=g;
    context.fill();
 	}
-  }
+
+}
  </script>
 </body>
 </html>
