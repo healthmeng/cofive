@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Access-Control-Allow-Origin" content="*">
+<meta name="viewport" content= "width=device-width, initial-scale=0.85,maximum-scale=0.85" />
  <title>五子棋</title>
  <style type="text/css">
   canvas{
   display: block;
-  margin: 50px auto;
+  margin: 10px auto;
   box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
   }
  </style>
@@ -56,6 +56,12 @@
     context.lineTo(435,15+i*30);
     context.stroke();
    }
+	
+   	context.fillStyle="#000027";
+   	context.beginPath();
+   	context.arc(15+7*30,15+7*30,3,0,2*Math.PI);//绘制棋子
+   	context.fill();
+   	context.closePath();
   }
 
   drawChessBoard();//绘制棋盘
@@ -128,6 +134,7 @@ function getNext(){
         		}  
         		xhr.responseType="text";
 				xhr.open("GET","/GetFromID?id="+jobj.Id);
+				xhr.timeout=180000;
 				xhr.onreadystatechange=function(c){
 				if(xhr.readyState==4 && xhr.status==200){
 					var ret=xhr.responseText;
@@ -145,7 +152,7 @@ function getNext(){
 			}
 		}
     	xmlhttp.onload = function(e){
-        	console.log('httpPostTest onload。e====>' + JSON.stringify(e));
+//        	console.log('httpPostTest onload。e====>' + JSON.stringify(e));
     	}
 		xmlhttp.send(JSON.stringify({
 				"Level" : Number(level),
@@ -156,12 +163,12 @@ function getNext(){
 	}
 }
 
-function oneStep(i,j){
+function drawChess(i,j,fakestep){
    context.beginPath();
    context.arc(15+i*30,15+j*30,13,0,2*Math.PI);//绘制棋子
    context.closePath();
    var g=context.createRadialGradient(15+i*30,15+j*30,13,15+i*30,15+j*30,0);//设置渐变
-   if(step%2==0){       //黑棋，否则是白棋
+   if(fakestep%2==0){       //黑棋，否则是白棋
     g.addColorStop(0,'#0A0A0A');//黑棋
     g.addColorStop(1,'#636766');
      chessBox[i][j]=1;
@@ -172,7 +179,22 @@ function oneStep(i,j){
    }
    context.fillStyle=g;
    context.fill();
+}
 
+function impress(i,j){
+    context.fillStyle="#800000";
+    context.beginPath();
+    context.arc(15+i*30,15+j*30,3,0,2*Math.PI);
+    context.fill();
+    context.closePath();
+}
+
+function oneStep(i,j){
+	if(step>0){
+		drawChess(stx[step-1],sty[step-1],step-1);
+	}
+	drawChess(i,j,step);
+	impress(i,j);
    stx[step]=i;
    sty[step]=j;
 	step++;
@@ -227,6 +249,9 @@ function redraw(){
    }
    context.fillStyle=g;
    context.fill();
+	}
+	if (step>0){
+		impress(stx[step-1],sty[step-1]);
 	}
 
 }

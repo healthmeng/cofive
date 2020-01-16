@@ -203,7 +203,7 @@ func HttpPostStep(w http.ResponseWriter, r *http.Request){
 		}*/
 		result,_:=ioutil.ReadAll(r.Body)
 		r.Body.Close()
-		fmt.Println(string(result))
+//		fmt.Println(string(result))
 		var gminfo GameInfo
 		if err:=json.Unmarshal(result,&gminfo);err!=nil{
 			fmt.Println("Unmarshal error:",err)
