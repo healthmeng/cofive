@@ -6,8 +6,11 @@
  <title>五子棋</title>
  <style type="text/css">
   canvas{
-  display: block;
   margin: 10px auto;
+  box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
+  }
+  input{
+  display: run-in;
   box-shadow: -2px -2px 2px #F3F2F2, 5px 5px 5px #6F6767;
   }
  </style>
@@ -15,6 +18,8 @@
 <body>
 <form name="frm">
  <canvas id="mycanvas" width="450px" height="450px"></canvas>
+</p>
+<input type="button" value="悔棋" onclick="onback()" /> <input type="button" value="认输" onclick="ongiveup()" />
 <input type="hidden" id="level" value={{.Level}} />
 <input type="hidden" id="color" value={{.Color}} />
 <input type="hidden" id="forbid" value={{.Forbid}} />
@@ -84,9 +89,15 @@ context.moveTo(1,1);
 		context.fillText("胜负已分，黑棋胜", 225, 20);
 	}else if(isOver==2){
 		context.fillText("胜负已分，白棋胜", 225, 20);
-	}else if(isOver<0){
+	}else if(isOver==-1){
 		context.fillText("居然和棋了...", 225, 20);
+	}else if(isOver==-2){
+		cr="白棋";
+		if(color=="white")
+			cr="黑棋";
+		context.fillText(cr+"走投无路,投降了!", 225, 20);
 	}
+
 }
 
 function getNext(){
@@ -222,15 +233,28 @@ chess.onmouseup = function(e){     //在body里点击触发事件
 		return ;
 	}
   }else if(e.button==2){
+		onback();
+	}
+}
+	
+function onback(){
+		if(!myturn) return ;
 		if(step>1){
 			chessBox[stx[step-1]][sty[step-1]]=0;
 			chessBox[stx[step-2]][sty[step-2]]=0;
 			step-=2;
 			redraw();
 		}
+
+}
+
+function ongiveup(){
+	if (myturn){
+		isOver=-2;
+		doOver();
+		myturn=0;
 	}
 }
-	
 
 function redraw(){
 	drawChessBoard();
