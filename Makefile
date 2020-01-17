@@ -8,6 +8,6 @@ cofived:src/cofived/main.go
 client:src/client/main.go
 	go build -gcflags "-N" client
 clean:
-	rm -f cofived
+	rm -f cofived client
 #
 #
