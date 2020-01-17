@@ -546,12 +546,12 @@ func (player* AIPlayer)GetCurValues()(int,int){
 	if player.curstep<1{
 		return 0,0
 	}
-/*	over:=player.IsOver()
-	if over==BLACK{// check black in CheckForbid already
+	over:=player.IsOver()
+	if over==BLACK{
 		return WIN,0
 	}else if over==WHITE{
 		return 0,WIN
-	}*/
+	}
 	nextmove:=player.curstep%2+1
 	bval,wval:=0,0
 	bd3,wd3,b4,w4:=0,0,0,0
@@ -567,8 +567,8 @@ func (player* AIPlayer)GetCurValues()(int,int){
 		btable[CCCCCC]= -WIN
 		btable[CCCC_C]= btable[NCCCC]
 		btable[CCC_CC]= btable[NCC]+btable[NCCC]
-		btable[NCCC_CCN]=0
-		btable[NCCCC_C]=0
+		btable[NCCC_CCN]=-50
+		btable[NCCCC_C]=-50
 	}
 
 	bnc3:=0
@@ -1040,8 +1040,10 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 				}
 			}else if over==player.human{
 				value= -WIN
-			}else{
+			}else if over==0{
 				value=player.GetMin(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
+			}else if over==-1{
+				value=0
 			}
 			player.UnapplyStep(allst[i])
 
@@ -1230,7 +1232,8 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	nsts:=len(maxsts)
 	tmend:=time.Now()
 	if debug{
-		fmt.Printf("time used: %.1f secs. %d calc result: %d step later: %d\n",tmend.Sub(tmstart).Seconds(),player.robot,player.level,max)
+		b,w:=player.GetCurValues()
+		fmt.Printf("current value: %d-%d. time used: %.1f secs. %d calc result: %d step later: %d\n",b,w,tmend.Sub(tmstart).Seconds(),player.robot,player.level,max)
 	}
 	if nsts>0{
 		rnd:=rand.New(rand.NewSource(tmend.UnixNano()))
