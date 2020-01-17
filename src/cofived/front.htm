@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content= "width=device-width, initial-scale=0.85,maximum-scale=0.85" />
+<meta name="viewport" content= "width=device-width, initial-scale=0.85" />
  <title>五子棋</title>
  <style type="text/css">
   canvas{
@@ -161,6 +161,7 @@ function getNext(){
 					isOver=Number(robj.IsOver);
 					if(isOver){
 						doOver();
+						myturn=1;
 						return;
 					}
 					myturn=1;
@@ -250,6 +251,7 @@ function onback(){
 			chessBox[stx[step-1]][sty[step-1]]=0;
 			chessBox[stx[step-2]][sty[step-2]]=0;
 			step-=2;
+			isOver=0;
 			redraw();
 		}
 
