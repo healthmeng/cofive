@@ -19,7 +19,7 @@
 <form name="frm">
  <canvas id="mycanvas" width="450px" height="450px"></canvas>
 </p>
-<input type="button" value="悔棋" onclick="onback()" /> <input type="button" value="重开" onclick="ongiveup()" /> <input type="text" id="values" value="黑白形势:" style="width:260px" />
+<input type="button" value="悔棋" onclick="onback()" /> <input type="button" value="重开" onclick="ongiveup()" /> <input type="text" id="values" value="黑白形势:" style="width:260px" readonly="readonly" />
 <input type="hidden" id="level" value={{.Level}} />
 <input type="hidden" id="color" value={{.Color}} />
 <input type="hidden" id="forbid" value={{.Forbid}} />
