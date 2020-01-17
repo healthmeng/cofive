@@ -3,6 +3,7 @@ package main
 import (
 "fmt"
 "log"
+"io/ioutil"
 "time"
 "math/rand"
 "ai"
@@ -48,13 +49,14 @@ type CalcData struct{
 	player *ai.AIPlayer
 	chRet chan int
 }
-/*
+
 type GameInfo struct{
-	Level string 
-	Color string
-	Forbid string
+	Level int
+	Num int
+	Forbid int
+	Steps string
 }
-*/
+
 var tkdata map[int64] *CalcData
 var maplock sync.RWMutex
 
@@ -191,22 +193,31 @@ func HttpPostStep(w http.ResponseWriter, r *http.Request){
     //w.Header().Set("Access-Control-Allow-Origin", "*")             //允许访问所有域
     //w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method=="POST"{
-		if err:=r.ParseForm();err!=nil{
+/*		if err:=r.ParseForm();err!=nil{
 			fmt.Println("parse form error:",err)
 		}else{
-			fmt.Printf("level:%s, forbid %s, num:%s", r.Form["level"],r.Form["forbid"],r.Form["num"])
+//			fmt.Printf("level:%s, forbid %s, num:%s", r.Form["level"],r.Form["forbid"],r.Form["num"])
+			for k,v:=range r.PostForm{
+				fmt.Println("Key:",k,"Value:",v)
+			}
+		}*/
+		result,_:=ioutil.ReadAll(r.Body)
+		r.Body.Close()
+//		fmt.Println(string(result))
+		var gminfo GameInfo
+		if err:=json.Unmarshal(result,&gminfo);err!=nil{
+			fmt.Println("Unmarshal error:",err)
+			return
 		}
 		var steps StepsInfo
-		steps.level,_=strconv.Atoi(r.FormValue("level"))
-		if r.FormValue("forbid")=="1"{
+		steps.level=gminfo.Level
+		if gminfo.Forbid==1{
 			steps.forbid=true
 		}
-		num,_:=strconv.Atoi(r.FormValue("num"))
-		steps.x=make([]int,num)
-		steps.y=make([]int,num)
-		points:=r.FormValue("steps") // a,b;c,d;e,f
-		xyinfo:=strings.Split(points,";")
-		for i:=0;i<num;i++{
+		steps.x=make([]int,gminfo.Num)
+		steps.y=make([]int,gminfo.Num)
+		xyinfo:=strings.Split(gminfo.Steps,";")
+		for i:=0;i<gminfo.Num;i++{
 			pt:=strings.Split(xyinfo[i],",")
 			steps.x[i],_=strconv.Atoi(pt[0])
 			steps.y[i],_=strconv.Atoi(pt[1])
@@ -222,11 +233,45 @@ func HttpPostStep(w http.ResponseWriter, r *http.Request){
 			return
 		}else{
 			fmt.Fprint(w,string(obj))
+			ProcCurrent(p,id)
 		}
 	}
 }
 
+func ConfigGame(w http.ResponseWriter, r *http.Request){
+    if r.Method=="GET"{
+        r.ParseForm()
+        t,_:=template.ParseFiles("select.htm")
+        t.Execute(w,nil)
+    }
+}
 func HttpGetID(w http.ResponseWriter, r *http.Request){
+	if(r.Method=="GET"){
+		r.ParseForm()
+		curinfo:=CurStepInfo{
+			BVal:0,
+			WVal:0,
+			X:7,
+			Y:7,
+			IsOver:0,
+			Id:r.Form.Get("id")	}
+		id,_:=strconv.ParseInt(curinfo.Id,10,64)
+	    if id>0{ // start:
+			maplock.RLock()
+			cdata,exists:=tkdata[id]
+			maplock.RUnlock()
+			if !exists{
+				return
+			}
+			curinfo.X,curinfo.Y,curinfo.IsOver,curinfo.BVal,curinfo.WVal=<-cdata.chRet,<-cdata.chRet,<-cdata.chRet,<-cdata.chRet,<-cdata.chRet
+		}
+		if obj,err:=json.Marshal(&curinfo);err!=nil{
+            fmt.Println("Marshal error")
+            return
+        }else{
+            fmt.Fprint(w,string(obj))
+		}
+	}
 }
 
 func main(){
@@ -247,7 +292,8 @@ func main(){
 		}
 	}()
 
-	http.HandleFunc("/",StartGame)
+	http.HandleFunc("/",ConfigGame)
+	http.HandleFunc("/StartGame",StartGame)
 	http.HandleFunc("/PostStep",HttpPostStep)
 	http.HandleFunc("/GetFromID",HttpGetID)
 	err=http.ListenAndServe(":7777",nil)

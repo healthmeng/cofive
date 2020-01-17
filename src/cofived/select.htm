@@ -1,0 +1,42 @@
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content= "width=device-width, initial-scale=1.0,maximum-scale=1.0,user-scalable=0" />
+<title>
+游戏设定
+</title>
+<script type="text/javascript">
+
+
+function onok(){
+	window.open("/StartGame?level="+config.level.value+"&color="+config.color.value+"&forbid="+config.forbid.value);
+}
+
+</script>
+</head>
+<body>
+<form name="config">
+你想使用:&emsp;<select id="color">
+<option value="white" selected>黑棋</option>
+<option value="black">白棋</option>
+</select>
+</p>
+游戏等级:&emsp;<select id="level">
+<option value="1">入门</option>
+<option value="2">中级</option>
+<option value="3">高级</option>
+<option value="4" selected>困难</option>
+</select>
+</p>
+游戏规则:&emsp;<select id="forbid">
+<option value="0">无禁手</option>
+<option value="1" selected>有禁手</option>
+</select>
+</p>
+<div style="text-align:left">
+<input type="button" value="确 定" onclick="onok()" />
+</div>
+<input type="hidden" id="editid" name="editid" />
+</form>
+</body>
+</html>
