@@ -19,7 +19,7 @@
 <form name="frm">
  <canvas id="mycanvas" width="450px" height="450px"></canvas>
 </p>
-<input type="button" value="悔棋" onclick="onback()" /> <input type="button" value="认输" onclick="ongiveup()" />
+<input type="button" value="悔棋" onclick="onback()" /> <input type="button" value="重开" onclick="ongiveup()" /> <input type="text" id="values" value="黑白形势:" style="width:260px" />
 <input type="hidden" id="level" value={{.Level}} />
 <input type="hidden" id="color" value={{.Color}} />
 <input type="hidden" id="forbid" value={{.Forbid}} />
@@ -34,6 +34,8 @@
   var myturn=0;
   var stx=new Array(255);
   var sty=new Array(255);
+  var bvals=new Array(255);
+  var wvals=new Array(255);
   var chessBox = [];//用于存放棋盘中落子的情况
   var level=frm.level.value;
   var color=frm.color.value; //human
@@ -133,6 +135,9 @@ function getNext(){
 			if(xmlhttp.readyState==4 && xmlhttp.status==200){
 				var jtxt=xmlhttp.responseText;
 				var jobj=JSON.parse(jtxt);
+				bvals[step-1]=jobj.BVal;
+				wvals[step-1]=jobj.WVal;
+				frm.values.value="黑白形势: "+jobj.BVal+"-"+jobj.WVal;
 	//			alert("result: over->"+jobj.IsOver+",id->"+jobj.Id);
 				isOver=Number(jobj.IsOver)
 				if (isOver){
@@ -151,6 +156,9 @@ function getNext(){
 					var ret=xhr.responseText;
 					var robj=JSON.parse(ret);
 					oneStep(Number(robj.X),Number(robj.Y));
+					bvals[step-1]=jobj.BVal;
+					wvals[step-1]=jobj.WVal;
+					frm.values.value="黑白形势: "+jobj.BVal+"-"+jobj.WVal;
 					isOver=Number(robj.IsOver);
 					if(isOver){
 						doOver();
@@ -249,11 +257,12 @@ function onback(){
 }
 
 function ongiveup(){
-	if (myturn){
+/*	if (myturn){
 		isOver=-2;
 		doOver();
 		myturn=0;
-	}
+	}*/
+	location.reload(true);
 }
 
 function redraw(){
@@ -276,6 +285,9 @@ function redraw(){
 	}
 	if (step>0){
 		impress(stx[step-1],sty[step-1]);
+		frm.values.value="黑白形势: "+bvals[step-1]+"-"+wvals[step-1];
+	}else{
+		frm.values.value="黑白形势:";
 	}
 
 }
