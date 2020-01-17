@@ -33,8 +33,10 @@ const(
 	CCCCCC
 	CCCC_C
 	CCC_CC
-	CC_CCC
-	NCC_CCCN
+	NCCC_CCN // same as NCCCC_CN
+	NCCCC_C // same as NCCC_CC
+	CCC_C
+	CC_CC
 	CCCC
 	NCCCC
 	CCC
@@ -46,39 +48,43 @@ const(
 	END
 )
 
-var BScoreTB [15]int =[...]int{
+var BScoreTB [17]int =[...]int{
 	0,	// NONE
 	WIN,	// CCCCC
 	WIN,	// CCCCCC
 	10000,	//CCCC_C
 	1150,	// CCC_CC
-	1020,	// CC_CCC
-	1000,	// NCC_CCCN
+	1000,	// NCCC_CCN
+	1100,	// NCCCC_C
+	1150,	// CCC_C
+	1020,	// CC_CC
 	10000,	// CCCC
 	1000,	// NCCCC
 	900,	// CCC
 	300,	// NCCC
 	300,	// CC 
-	20,		// NCC
-	0,		// C
+	10,		// NCC
+	5,		// C
 	0,		// NC
 }
 
-var FScoreTB [15] int=[...]int{
+var FScoreTB [17] int=[...]int{
 	0,	// NONE
 	WIN,	// CCCCC
 	WIN,	// CCCCCC
 	50000,	// CCCC_C
-	50150,	// CCC_CC
-	50020,	// CC_CCC
-	50000,	// NCC_CCCN
+	50000,	// CCC_CC
+	50000,	// NCCC_CCN
+	50000,	// NCCCC_C
+	50000,	// CCC_C
+	50000,	// CC_CC
 	50000,	// CCCC
 	50000,	// NCCCC
-	2000,	// CCC
-	300,	// NCCC
+	5000,	// CCC
+	400,	// NCCC
 	300,	// CC 
 	30,		// NCC
-	0,		// C
+	10,		// C
 	0,		// NC
 }
 
@@ -244,11 +250,6 @@ func (player* AIPlayer) IsOver() int{
 		return 0
 	}
 
-	if player.curstep>=MAX_STEP{
-		log.Println("Drawned")
-		return -1
-	}
-
 //	x,y,bw:=player.steps[player.curstep-1].x,player.steps[player.curstep-1].y,player.steps[player.curstep-1].bw
 
 	if player.steps[player.curstep-1].bw==BLACK{
@@ -268,51 +269,11 @@ func (player* AIPlayer) IsOver() int{
 			return WHITE
 		}
 	}
-/*
-	n:=0
-	for i:=x-1;i>=0 && player.frame[i][y]==bw && n<4 ; i--{
-		n++;
-	}
-	for i:=x+1;i<15 && player.frame[i][y]==bw && n<4; i++{
-		n++;
-	}
-	if n>=4{
-		return bw
-	}
 
-	n=0
-	for i:=y-1 ;i>=0 && player.frame[x][i]==bw && n<4; i--{
-		n++;
+	if player.curstep>=MAX_STEP{
+		log.Println("Drawned")
+		return -1
 	}
-	for i:=y+1;i<15 && player.frame[x][i]==bw && n<4; i++{
-		n++;
-	}
-	if n>=4{
-		return bw
-	}
-
-	n=0
-	for i,j:=x-1,y-1;i>=0 && j>=0 && player.frame[i][j]==bw && n<4 ; i,j=i-1,j-1{
-		n++;
-	}
-	for i,j:=x+1,y+1;i<15 && j<15 && player.frame[i][j]==bw && n<4;i,j=i+1,j+1{
-		n++;
-	}
-	if n>=4{
-		return bw
-	}
-
-	n=0
-	for i,j:=x+1,y-1;i<15 && j>=0 && player.frame[i][j]==bw && n<4; i,j=i+1,j-1{
-		n++;
-	}
-	for i,j:=x-1,y+1;i>=0 && j<15 && player.frame[i][j]==bw && n<4 ;i,j=i-1,j+1{
-		n++;
-	}
-	if n>=4{
-		return bw
-	}
-*/
 
 	return 0
 }
@@ -470,8 +431,19 @@ func (part *Conti)ParseType()int{
 				if part.leftsp>0 && part.rightsp>0 && midsp==0{
 					ret=CCCC
 				}else{
-					ret=NCCCC
-				}
+					if part.leftsp>0 && part.rightsp>0{
+						switch midsp{
+						case 1:
+							ret=CCC_C
+						case 2:
+							ret=CC_CC
+						case 3:
+							ret=CCC_C
+						}
+					}else{// start or end with N
+							ret=NCCCC
+						}
+					}
 			}
 		case cont>=5:
 			maxcont:=part.spmid
@@ -482,32 +454,58 @@ func (part *Conti)ParseType()int{
 					ret=CCCCC
 			}else if maxcont>5{
 					ret=CCCCCC
-			} else{
-				max:=0
-				if maxcont!=part.spmid{	// right part is longer
-					if maxcont+part.rightsp>4{
+			} else{// maxcont <5 :CC_CCC and spmid must not be 0
+		//		max:=0
+				if part.leftsp>0 && part.rightsp>0{
+					if maxcont==4{
+						ret=CCCC_C
+					}else{
+						ret=CCC_CC
+					}
+				}else if part.leftsp==0 && part.rightsp==0{
+						ret=NCCC_CCN
+				}else{
+					ret=NCCCC_C
+				}
+			}
+
+			/*	if maxcont!=part.spmid{	// right part is longer
+					
+				}
+					if maxcont+part.rightsp>=4{
 						max=maxcont
-					}else if part.spmid+part.leftsp>4{
+					}else if part.spmid+part.leftsp>=4{
 						max=part.spmid
 					}
 				}else{ // left part
-					if part.spmid+part.leftsp>4{
+					if part.spmid+part.leftsp>=4{
 						max=part.spmid
-					}else if maxcont+part.rightsp>4{
+					}else if maxcont+part.rightsp>=4{
 						max=maxcont
 					}
 				}
 				switch max{
 					case 4:
-						ret=CCCC_C
+						if part.leftsp>0 && part.rightsp>0{
+							ret=CCCC_C
+						}else if part.left==0 && part.rightsp==0{
+							ret=NCCC_CCN
+						}else{
+							ret=NCCCC_C
+						}
 					case 3:
-						ret=CCC_CC
+						if part.leftsp>0 && part.right>0{
+							ret=CCC_CC
+						}else if part.leftsp ==0 && part.rightsp==0{
+							ret=NCCC_CCN
+						}else{
+							ret=NCCCC_C
+						}
 					case 2:
 						ret=CC_CCC
 					default:
 						ret=NCC_CCCN
-				}
-			}
+				}*/
 	}
 	part.conttype=ret
 	return ret
@@ -568,9 +566,9 @@ func (player* AIPlayer)GetCurValues()(int,int){
 	if player.forbid{
 		btable[CCCCCC]= -WIN
 		btable[CCCC_C]= btable[NCCCC]
-		btable[CCC_CC]= btable[NCCC]
-		btable[CC_CCC]= btable[NCC]
-		btable[NCC_CCCN]=0
+		btable[CCC_CC]= btable[NCC]+btable[NCCC]
+		btable[NCCC_CCN]=0
+		btable[NCCCC_C]=0
 	}
 
 	bnc3:=0
@@ -682,13 +680,9 @@ func (player* AIPlayer) CountShape(parts []Conti,checkfb bool)(map [int]int,map[
 						}
 					case CCCC:
 						fallthrough
-					case CCCC_C:
+					case CCC_C:
 						fallthrough
-					case CCC_CC:
-						fallthrough
-					case CC_CCC:
-						fallthrough
-					case NCC_CCCN:
+					case CC_CC:
 						fallthrough
 					case NCCCC:
 						nCCCC++
