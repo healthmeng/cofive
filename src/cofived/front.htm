@@ -140,6 +140,7 @@ function getNext(){
 				frm.values.value="黑白形势: "+jobj.BVal+"-"+jobj.WVal;
 				isOver=Number(jobj.IsOver)
 				if (isOver){
+			//		frm.values.value="胜负已分"
 					doOver();
 					return
 				}
@@ -160,6 +161,7 @@ function getNext(){
 					frm.values.value="黑白形势: "+robj.BVal+"-"+robj.WVal;
 					isOver=Number(robj.IsOver);
 					if(isOver){
+					//	frm.values.value="胜负已分"
 						doOver();
 						myturn=1;
 						return;
@@ -201,7 +203,7 @@ function drawChess(i,j,fakestep){
 }
 
 function impress(i,j){
-    context.fillStyle="#800000";
+    context.fillStyle="#f08080";
     context.beginPath();
     context.arc(15+i*30,15+j*30,3,0,2*Math.PI);
     context.fill();

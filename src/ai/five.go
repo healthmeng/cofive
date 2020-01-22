@@ -1037,15 +1037,19 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 			player.ApplyStep(allst[i])
 			over:=player.IsOver()
 			if over== player.robot{
-				b,w:=player.GetCurValues()
+/*				b,w:=player.GetCurValues()
 				player.UnapplyStep(allst[i])
 				if player.robot==BLACK{
 					return b-w
 				}else{
 					return w-b
-				}
+				}*/
+				player.UnapplyStep(allst[i])
+				return WIN
 			}else if over==player.human{
 				value= -WIN
+			}else if over==-1{
+				value=0
 			}else{
 				value=player.GetMin(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
@@ -1100,16 +1104,20 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 			player.ApplyStep(allst[i])
 			over:=player.IsOver()
 			if over== player.human{
-				b,w:=player.GetCurValues()
+	/*			b,w:=player.GetCurValues()
 				player.UnapplyStep(allst[i])
 				if player.robot==BLACK{
 					return b-w
 				}else{
 					return w-b
-				}
+				}*/
+				player.UnapplyStep(allst[i])
+				return -WIN
 			}else if over==player.robot{
 				//log.Println("Error,impossible: black win in white turn")
 				value=WIN	// forbidden
+			}else if over==-1{
+				value=0
 			}else{
 				value=player.GetMax(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
