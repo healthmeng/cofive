@@ -82,17 +82,14 @@ var FScoreTB [15] int=[...]int{
 	0,		// NC
 }
 
-var IsWin bool =false
-var ncpus int=0
-var maxvlock sync.RWMutex
-var steplock sync.Mutex
-//var rnd *rand.Rand
-
-func init(){
-	if strings.ToLower(runtime.GOOS)=="windows"{
-		IsWin=true
-	}
-	ncpus=runtime.NumCPU()
+type ABInfo struct{
+	alocks []sync.RWMutex
+	blocks []sync.RWMutex
+	alphas []int
+	betas []int
+	steplock sync.Mutex
+	maxplayers []*AIPlayer
+	maxsts []StepInfo
 }
 
 type StepInfo struct{
@@ -125,6 +122,19 @@ type AIPlayer struct{
 //	bshapes, wshapes map[int]int
 	curstep int
 	robot, human int
+}
+
+var IsWin bool =false
+var ncpus int=0
+//var maxvlock sync.RWMutex
+//var steplock sync.Mutex
+//var rnd *rand.Rand
+
+func init(){
+	if strings.ToLower(runtime.GOOS)=="windows"{
+		IsWin=true
+	}
+	ncpus=runtime.NumCPU()
 }
 
 /* return value:
@@ -1015,7 +1025,7 @@ func (player* AIPlayer)TraceAll(){
 	fmt.Println("-----End Trace-----")
 }
 
-func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int) int{
+func (player* AIPlayer)GetMax(x,y int,level int,abinfo *ABInfo, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
 
@@ -1037,36 +1047,38 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 			player.ApplyStep(allst[i])
 			over:=player.IsOver()
 			if over== player.robot{
-/*				b,w:=player.GetCurValues()
 				player.UnapplyStep(allst[i])
-				if player.robot==BLACK{
-					return b-w
-				}else{
-					return w-b
-				}*/
-				player.UnapplyStep(allst[i])
+				abinfo.alocks[level-1].Lock()
+				abinfo.alphas[level-1]=WIN
+				abinfo.alocks[level-1].Unlock()
 				return WIN
 			}else if over==player.human{
 				value= -WIN
 			}else if over==-1{
 				value=0
 			}else{
-				value=player.GetMin(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
+				value=player.GetMin(allst[i].x,allst[i].y,level-1,abinfo,alpha,beta)
 			}
 			player.UnapplyStep(allst[i])
 
-      /*      maxvlock.RLock()
-            if (*topmax>alpha){
-                alpha=*topmax
-            }
-            maxvlock.RUnlock()*/
 			if value>curmax{
 				curmax=value
-				if curmax>alpha{
-					alpha=curmax
+
+			if curmax>alpha{
+				alpha=curmax
+				abinfo.alocks[level-1].RLock()
+				if abinfo.alphas[level-1]<alpha{
+					abinfo.alocks[level-1].RUnlock()
+					abinfo.alocks[level-1].Lock()
+					abinfo.alphas[level-1]=alpha
+					abinfo.alocks[level-1].Unlock()
+				}else{
+					abinfo.alocks[level-1].RUnlock()
 				}
 			}
+			}
 
+			UpdateBeta(&beta,abinfo,level+1,player.level)
 			if beta<= -WIN || curmax>=beta{
 				break
 			}
@@ -1083,7 +1095,28 @@ func (player* AIPlayer)GetAILevel() int{
 	return player.level
 }
 
-func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta int) int{
+func UpdateAlpha(alpha* int, abinfo* ABInfo, prelevel,toplevel int){
+	for i:=prelevel-1;i<=toplevel-1;i+=2{
+		abinfo.alocks[i].RLock()
+		if *alpha<abinfo.alphas[i]{
+			*alpha=abinfo.alphas[i]
+		}
+		abinfo.alocks[i].RUnlock()
+	}
+}
+
+func UpdateBeta(beta *int, abinfo* ABInfo, prelevel,toplevel int){
+	for i:=prelevel-1;i<=toplevel-1;i+=2{
+		abinfo.blocks[i].RLock()
+		if *beta<abinfo.betas[i]{
+			*beta=abinfo.betas[i]
+		}
+		abinfo.blocks[i].RUnlock()
+	}
+
+}
+
+func (player* AIPlayer)GetMin(x,y int,level int, abinfo *ABInfo, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
 		if player.robot==BLACK{
@@ -1112,6 +1145,9 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 					return w-b
 				}*/
 				player.UnapplyStep(allst[i])
+				abinfo.blocks[level-1].Lock()
+				abinfo.betas[level-1]=-WIN
+				abinfo.blocks[level-1].Unlock()
 				return -WIN
 			}else if over==player.robot{
 				//log.Println("Error,impossible: black win in white turn")
@@ -1119,27 +1155,28 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 			}else if over==-1{
 				value=0
 			}else{
-				value=player.GetMax(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
-			}
-			if value<beta{
-				beta=value
-			}
-			if value<min{
-				min=value
+				value=player.GetMax(allst[i].x,allst[i].y,level-1,abinfo,alpha,beta)
 			}
 			player.UnapplyStep(allst[i])
-			if (alpha>=WIN || min<alpha){
-				break
+
+			if value<min{
+				min=value
+			if value<beta{
+				beta=value
+				abinfo.blocks[level-1].RLock()
+				if abinfo.betas[level-1]>beta{
+					abinfo.blocks[level-1].RUnlock()
+					abinfo.blocks[level-1].Lock()
+					abinfo.betas[level-1]=beta
+					abinfo.blocks[level-1].Unlock()
+				}else{
+					abinfo.blocks[level-1].RUnlock()
+				}
 			}
-			if level==player.level-1{
-				continue
+
 			}
-			maxvlock.RLock()
-			if (*topmax>alpha){
-				alpha=*topmax
-			}
-			maxvlock.RUnlock()
-			if alpha>=WIN || min<alpha {
+			UpdateAlpha(&alpha,abinfo,level+1,player.level)
+			if (alpha>=WIN || min<=alpha){
 				break
 			}
 		}
@@ -1147,7 +1184,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 	return min
 }
 
-func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, maxsts *[]StepInfo, maxplayers *[]*AIPlayer){
+func (player* AIPlayer)SearchPara(steps[]StepInfo,finished chan int, abinfo* ABInfo){
 	nstep:=len(steps)
 	result:=0
 	for i:=0;i<nstep;i++{
@@ -1155,46 +1192,62 @@ func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, ma
 		over:=player.IsOver()
 		if over== player.robot{// -1(drawn) is impossible, because nstep==1 will not enter SearchPara
 			player.UnapplyStep(steps[i])
-			maxvlock.Lock()
-			*max=WIN
-			*maxsts=make([]StepInfo,1,MAX_STEP)
-			(*maxsts)[0]=steps[i]
-			*maxplayers=make([]*AIPlayer,1,MAX_STEP)
-			(*maxplayers)[0]=player
-			maxvlock.Unlock()
+			abinfo.alocks[player.level-1].Lock()
+			abinfo.alphas[player.level-1]=WIN
+			abinfo.alocks[player.level-1].Unlock()
+			abinfo.steplock.Lock()
+			abinfo.maxsts=make([]StepInfo,1,MAX_STEP)
+			abinfo.maxsts[0]=steps[i]
+			abinfo.maxplayers=make([]*AIPlayer,1,MAX_STEP)
+			abinfo.maxplayers[0]=player
+			abinfo.steplock.Unlock()
 			finished<-1
 			return
 		}else{
 			var value int
 			if over==player.human{
 				value= -WIN
+			}else if over==-1{
+				value=0
 			}else{
-				maxvlock.RLock()
-				alpha:=*max
-				maxvlock.RUnlock()
-				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,max,alpha,-SCORE_INIT)
+				abinfo.alocks[player.level-1].RLock()
+				alpha:=abinfo.alphas[player.level-1]
+				abinfo.alocks[player.level-1].RUnlock()
+				value=player.GetMin(steps[i].x,steps[i].y,player.level-1,abinfo,alpha,-SCORE_INIT)
 			}
-			maxvlock.RLock()
-			if *max<WIN && value>=*max{
-				maxvlock.RUnlock()
-				maxvlock.Lock()
-				if value>*max{
-					*maxsts=make([]StepInfo,1,MAX_STEP)
-					(*maxsts)[0]=steps[i]
-					*maxplayers=make([]*AIPlayer,1,MAX_STEP)
-					(*maxplayers)[0]=player
-					*max=value
+			abinfo.alocks[player.level-1].RLock()
+			if value>=abinfo.alphas[player.level-1]{
+//				abinfo.alocks[player.level-1].RUnlock()
+//				abinfo.alocks[player.level-1].Lock()
+				if value>abinfo.alphas[player.level-1]{
+					abinfo.alocks[player.level-1].RUnlock()
+					abinfo.alocks[player.level-1].Lock()
+					abinfo.alphas[player.level-1]=value
+					abinfo.alocks[player.level-1].Unlock()
+					abinfo.steplock.Lock()
+					abinfo.maxsts=make([]StepInfo,1,MAX_STEP)
+					abinfo.maxsts[0]=steps[i]
+					abinfo.maxplayers=make([]*AIPlayer,1,MAX_STEP)
+					abinfo.maxplayers[0]=player
+					abinfo.steplock.Unlock()
+
 					result=2 // new max
-				} else if value==*max{
-					*maxsts=append(*maxsts,steps[i])
-					*maxplayers=append(*maxplayers,player)
-					if result==0{
-						result=3	// same as old max
+				} else{
+					if value==abinfo.alphas[player.level-1]{
+						abinfo.alocks[player.level-1].RUnlock()
+						abinfo.steplock.Lock()
+						abinfo.maxsts=append(abinfo.maxsts,steps[i])
+						abinfo.maxplayers=append(abinfo.maxplayers,player)
+						abinfo.steplock.Unlock()
+						if result==0{
+							result=3	// same as old max
+						}
+					}else{
+						abinfo.alocks[player.level-1].RUnlock()
 					}
 				}
-				maxvlock.Unlock()
 			}else{
-				maxvlock.RUnlock()
+				abinfo.alocks[player.level-1].RUnlock()
 			}
 			player.UnapplyStep(steps[i])
 		}
@@ -1202,13 +1255,33 @@ func SearchPara(player *AIPlayer,steps[]StepInfo,finished chan int, max *int, ma
 	finished<-result
 }
 
+/*
+type ABInfo struct{
+	alocks []sync.RWMutex
+	blocks []sync.RWMutex
+	alphas []int
+	betas []int
+	steplock sync.Mutex
+	maxsts []StepInfo
+	maxplayers []*AIPlayer
+}
+*/
+
 func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	tmstart:=time.Now()
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
-	max:=SCORE_INIT
-	maxsts:=make([]StepInfo,0,MAX_STEP)
-	maxplayers:=make([]*AIPlayer,0,MAX_STEP)
+	abinfo:=new (ABInfo)
+	abinfo.maxsts=make([]StepInfo,0,MAX_STEP)
+	abinfo.maxplayers=make([]*AIPlayer,0,MAX_STEP)
+	abinfo.alocks=make([]sync.RWMutex,player.level,player.level)
+	abinfo.blocks=make([]sync.RWMutex,player.level,player.level)
+	abinfo.alphas=make([]int,player.level,player.level)
+	abinfo.betas=make([]int,player.level,player.level)
+	for i:=0;i<player.level;i++{
+		abinfo.alphas[i]=SCORE_INIT
+		abinfo.betas[i]= -SCORE_INIT
+	}
 	if nstep<1{
 		return nil
 	}else if nstep==1{
@@ -1221,7 +1294,7 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 			for i=0;i<nstep;i++{
 				np,_:=InitPlayer(player.robot,player.level,player.forbid)
 				np.Clone(player)
-				go SearchPara(np,allst[i:i+1],finished,&max,&maxsts,&maxplayers)
+				go np.SearchPara(allst[i:i+1],finished,abinfo)
 			}
 			for i=0;i<nstep;i++{
 				<-finished
@@ -1234,23 +1307,23 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 				if i==ncpus-1{
 					end=nstep
 				}
-				go SearchPara(np,allst[i*nslide:end],finished,&max,&maxsts,&maxplayers)
+				go np.SearchPara(allst[i*nslide:end],finished,abinfo)
 			}
 			for i=0;i<ncpus;i++{
 				<-finished
 			}
 		}
 	}
-	nsts:=len(maxsts)
+	nsts:=len(abinfo.maxsts)
 	tmend:=time.Now()
 	if debug{
-		fmt.Printf("time used: %.1f secs. %d calc result: %d step later: %d\n",tmend.Sub(tmstart).Seconds(),player.robot,player.level,max)
+		fmt.Printf("time used: %.1f secs. %d calc result: %d step later: %d\n",tmend.Sub(tmstart).Seconds(),player.robot,player.level,abinfo.alphas[player.level-1])
 	}
 	if nsts>0{
 		rnd:=rand.New(rand.NewSource(tmend.UnixNano()))
 		retindex:=rnd.Int()%nsts
-		player.Clone(maxplayers[retindex])
-		return &maxsts[retindex]
+		player.Clone(abinfo.maxplayers[retindex])
+		return &abinfo.maxsts[retindex]
 	}
 	return nil
 }
