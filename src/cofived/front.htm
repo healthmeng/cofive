@@ -150,7 +150,7 @@ function getNext(){
         		}  
         		xhr.responseType="text";
 				xhr.open("GET","/GetFromID?id="+jobj.Id);
-				xhr.timeout=180000;
+				xhr.timeout=1800000;
 				xhr.onreadystatechange=function(c){
 				if(xhr.readyState==4 && xhr.status==200){
 					var ret=xhr.responseText;

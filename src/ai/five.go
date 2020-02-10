@@ -1139,7 +1139,7 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 				alpha=*topmax
 			}
 			maxvlock.RUnlock()
-			if alpha>=WIN || min<alpha {
+			if alpha>=WIN || min<=alpha {
 				break
 			}
 		}
