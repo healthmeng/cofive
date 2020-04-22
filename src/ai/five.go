@@ -115,6 +115,12 @@ type Conti struct{
 	isnew bool // created by latest chess
 }
 
+type DebugInfo struct{
+	steps []StepInfo
+	deepstep int
+	forbid bool
+}
+
 type AIPlayer struct{
 	frame [15][15] int
 	level int
@@ -125,7 +131,53 @@ type AIPlayer struct{
 //	bshapes, wshapes map[int]int
 	curstep int
 	robot, human int
+	debug *DebugInfo
 }
+
+func (debug* DebugInfo)RecalcValBW() int{// black - white
+	robot:=WHITE
+	if debug.deepstep%2==0{
+		robot=BLACK
+	}
+	p,_:=InitPlayer(robot,4,debug.forbid)
+	for i:=0;i<debug.deepstep;i++{
+		p.SetStep(debug.steps[i].x,debug.steps[i].y)
+	}
+	b,w:=p.GetCurValues()
+	return b-w
+}
+
+func (self* DebugInfo)Update(info* DebugInfo){
+	for i:=0;i<info.deepstep;i++{
+		self.steps[i]=info.steps[i]
+	}
+	self.deepstep=info.deepstep
+}
+
+func (player* AIPlayer)UpdateDbgInfo(){
+//	if player.debug!=nil{
+		for i:=0;i<player.curstep;i++{
+			player.debug.steps[i]=player.steps[i]
+		}
+		player.debug.deepstep=player.curstep
+//	}
+}
+
+func (player* AIPlayer)CreateDbgInfo() *DebugInfo{
+	debug:=new (DebugInfo)
+	debug.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
+	debug.deepstep=player.curstep
+	for i:=0;i<debug.deepstep;i++{
+		debug.steps[i]=player.steps[i]
+	}
+	debug.forbid=player.forbid
+	return debug
+}
+
+func (player *AIPlayer)EnableDebug(){
+	player.debug=player.CreateDbgInfo()
+}
+
 
 /* return value:
 	0: not same
@@ -220,6 +272,10 @@ func (player* AIPlayer)DebugStep(){
 	fmt.Printf("step %d: %d,%d  value: %d-%d\n",player.curstep,player.steps[n].x,player.steps[n].y,b,w)
 }
 
+func (player *AIPlayer)DisableDebug(){
+	player.debug=nil
+}
+
 func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 	player:=new (AIPlayer)
 	player.level=level
@@ -227,6 +283,7 @@ func InitPlayer(color int, level int, forbid bool) (* AIPlayer,error){
 	player.steps=make([]StepInfo,MAX_STEP,MAX_STEP)
 	player.bshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
 	player.wshapes=make([]map[int]int,MAX_STEP,MAX_STEP)
+	player.debug=nil
 	if player.robot=color;color==BLACK{
 		player.human=WHITE
 	}else if color==WHITE{
@@ -1018,6 +1075,9 @@ func (player* AIPlayer)TraceAll(){
 func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
+		if player.debug!=nil{
+			player.UpdateDbgInfo()
+		}
 
 		if player.robot==BLACK{
 			return b-w
@@ -1025,11 +1085,16 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 			return w-b
 		}
 	}
+	var tmpdbg *DebugInfo=nil
+	if player.debug!=nil{
+		tmpdbg=player.CreateDbgInfo()
+	}
 
 	allst:=player.getallstep(player.robot) // always player.robot
 	nstep:=len(allst)
 	curmax:=SCORE_INIT
 	if nstep<1{// no place left
+		player.UpdateDbgInfo()
 		return 0 // drawn 
 	}else{
 		for i:=0;i<nstep;i++{
@@ -1044,6 +1109,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 				}else{
 					return w-b
 				}*/
+				player.UpdateDbgInfo()
 				player.UnapplyStep(allst[i])
 				return WIN
 			}else if over==player.human{
@@ -1053,6 +1119,7 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 			}else{
 				value=player.GetMin(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
+
 			player.UnapplyStep(allst[i])
 
       /*      maxvlock.RLock()
@@ -1061,6 +1128,9 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
             }
             maxvlock.RUnlock()*/
 			if value>curmax{
+				if player.debug!=nil{
+					tmpdbg.Update(player.debug)
+				}
 				curmax=value
 				if curmax>alpha{
 					alpha=curmax
@@ -1071,6 +1141,10 @@ func (player* AIPlayer)GetMax(x,y int,level int,topmax* int, alpha int, beta int
 				break
 			}
 		}
+	}
+	if player.debug!=nil{
+//		player.debug.Update(tmpdbg)
+		player.debug=tmpdbg
 	}
 	return curmax
 }
@@ -1086,19 +1160,29 @@ func (player* AIPlayer)GetAILevel() int{
 func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta int) int{
 	if level==0{
 		b,w:=player.GetCurValues()
+		if player.debug!=nil{
+			player.UpdateDbgInfo()
+		}
 		if player.robot==BLACK{
 			return b-w
 		}else{
 			return w-b
 		}
 	}
-
+	var tmpdbg *DebugInfo =nil
+	if player.debug!=nil{
+		tmpdbg=player.CreateDbgInfo()
+	}
 	allst:=player.getallstep(player.human) // always player.human
 	nstep:=len(allst)
 	min:=-SCORE_INIT
 	if nstep<1{// no place left
+		if player.debug!=nil{
+			player.UpdateDbgInfo()
+		}
 		return 0 // drawn 
 	}else{
+
 		for i:=0;i<nstep;i++{
 			var value int
 			player.ApplyStep(allst[i])
@@ -1111,6 +1195,9 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 				}else{
 					return w-b
 				}*/
+				if player.debug!=nil{
+					player.UpdateDbgInfo()
+				}
 				player.UnapplyStep(allst[i])
 				return -WIN
 			}else if over==player.robot{
@@ -1121,11 +1208,14 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 			}else{
 				value=player.GetMax(allst[i].x,allst[i].y,level-1,topmax,alpha,beta)
 			}
-			if value<beta{
-				beta=value
-			}
 			if value<min{
 				min=value
+				if player.debug!=nil{
+					tmpdbg.Update(player.debug)
+				}
+				if min<beta{
+					beta=min
+				}
 			}
 			player.UnapplyStep(allst[i])
 			if (alpha>=WIN || min<alpha){
@@ -1143,6 +1233,9 @@ func (player* AIPlayer)GetMin(x,y int,level int, topmax *int, alpha int, beta in
 				break
 			}
 		}
+	}
+	if player.debug!=nil{
+		player.debug=tmpdbg
 	}
 	return min
 }
@@ -1249,6 +1342,9 @@ func (player* AIPlayer)MinMaxAlgo(debug bool ) *StepInfo{
 	if nsts>0{
 		rnd:=rand.New(rand.NewSource(tmend.UnixNano()))
 		retindex:=rnd.Int()%nsts
+		if debug{
+			retindex=0
+		}
 		player.Clone(maxplayers[retindex])
 		return &maxsts[retindex]
 	}
