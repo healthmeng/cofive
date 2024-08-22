@@ -38,7 +38,7 @@
   var wvals=new Array(255);
   var chessBox = [];//用于存放棋盘中落子的情况
   var level=frm.level.value;
-  var color=frm.color.value; //human
+  var color=frm.color.value; //human use: black , white, manual
   var forbid=frm.forbid.value;
 
   for(var i=0;i<15;i++){
@@ -72,7 +72,7 @@
   }
 
   drawChessBoard();//绘制棋盘
-  if (color=="black"){
+  if (color=="black"){ // first step
 		getNext();
 	}
 	myturn=1;
@@ -95,7 +95,8 @@ context.moveTo(1,1);
 		context.fillText("居然和棋了...", 225, 20);
 	}else if(isOver==-2){
 		cr="白棋";
-		if(color=="white")
+		//if(color=="white")
+		if(step%2==0)
 			cr="黑棋";
 		context.fillText(cr+"走投无路,投降了!", 225, 20);
 	}
@@ -144,6 +145,8 @@ function getNext(){
 					doOver();
 					return
 				}
+				if (color=="manual")
+					return ;
 				xhr=new XMLHttpRequest();
 		        if(xhr.overrideMimeType) {  
 				xhr.overrideMimeType("text/html");  
@@ -225,7 +228,7 @@ document.oncontextmenu = function(){return false;}     //禁止鼠标右键菜�
 
 //document.body.onmouseup = function(e){     //在body里点击触发事件
 chess.onmouseup = function(e){     //在body里点击触发事件
-	if(myturn==0) return ;
+	if(myturn==0 && color!="manual") return ;
 
 //     var res = document.getElementById('mycanvas');      //找到id为box的div
        if(e.button==0 || e.button==1){    
@@ -248,7 +251,8 @@ chess.onmouseup = function(e){     //在body里点击触发事件
 }
 	
 function onback(){
-		if(!myturn) return ;
+	if(color!="manual"){
+		if (!myturn) return ;
 		if(step>1){
 			chessBox[stx[step-1]][sty[step-1]]=0;
 			chessBox[stx[step-2]][sty[step-2]]=0;
@@ -256,6 +260,14 @@ function onback(){
 			isOver=0;
 			redraw();
 		}
+	}else{
+		if(step>0){
+            chessBox[stx[step-1]][sty[step-1]]=0;
+            step-=1;
+            isOver=0;
+            redraw();
+		}
+	}
 
 }
 
