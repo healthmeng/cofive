@@ -228,7 +228,7 @@ document.oncontextmenu = function(){return false;}     //禁止鼠标右键菜�
 
 //document.body.onmouseup = function(e){     //在body里点击触发事件
 chess.onmouseup = function(e){     //在body里点击触发事件
-	if(myturn==0 && color!="manual") return ;
+	if(isOver==0 && myturn==0 && color!="manual") return ;
 
 //     var res = document.getElementById('mycanvas');      //找到id为box的div
        if(e.button==0 || e.button==1){    
@@ -252,13 +252,23 @@ chess.onmouseup = function(e){     //在body里点击触发事件
 	
 function onback(){
 	if(color!="manual"){
-		if (!myturn) return ;
-		if(step>1){
-			chessBox[stx[step-1]][sty[step-1]]=0;
-			chessBox[stx[step-2]][sty[step-2]]=0;
-			step-=2;
-			isOver=0;
-			redraw();
+		if (!myturn && isOver==0) return ;
+		if(!myturn && isOver!=0){
+			if(step>1){
+	            chessBox[stx[step-1]][sty[step-1]]=0;
+    	        step-=1;
+        	    isOver=0;
+           		redraw();
+				myturn=1;
+			}
+		}else{
+			if(step>1){
+				chessBox[stx[step-1]][sty[step-1]]=0;
+				chessBox[stx[step-2]][sty[step-2]]=0;
+				step-=2;
+				isOver=0;
+				redraw();
+			}
 		}
 	}else{
 		if(step>0){
